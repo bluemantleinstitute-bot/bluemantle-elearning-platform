@@ -1,0 +1,186 @@
+@import "tailwindcss";
+
+@theme {
+  --font-inter: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-manrope: Manrope, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --color-background: #f8f9ff;
+  --color-error: #ba1a1a;
+  --color-error_container: #ffdad6;
+  --color-inverse_on_surface: #e9f1ff;
+  --color-inverse_primary: #a7c8ff;
+  --color-inverse_surface: #223243;
+  --color-on_background: #0c1d2d;
+  --color-on_error: #ffffff;
+  --color-on_error_container: #93000a;
+  --color-on_primary: #ffffff;
+  --color-on_primary_container: #95bcfa;
+  --color-on_primary_fixed: #001c3b;
+  --color-on_primary_fixed_variant: #19477e;
+  --color-on_secondary: #ffffff;
+  --color-on_secondary_container: #005172;
+  --color-on_secondary_fixed: #001e2d;
+  --color-on_secondary_fixed_variant: #004c6b;
+  --color-on_surface: #0c1d2d;
+  --color-on_surface_variant: #434750;
+  --color-on_tertiary: #ffffff;
+  --color-on_tertiary_container: #82c3e3;
+  --color-on_tertiary_fixed: #001f2b;
+  --color-on_tertiary_fixed_variant: #004d66;
+  --color-outline: #737781;
+  --color-outline_variant: #c3c6d1;
+  --color-primary: #00a2cf;
+  --color-primary_container: #00769b;
+  --color-primary_fixed: #d5e3ff;
+  --color-primary_fixed_dim: #a7c8ff;
+  --color-secondary: #00658d;
+  --color-secondary_container: #60c6ff;
+  --color-secondary_fixed: #c6e7ff;
+  --color-secondary_fixed_dim: #83cfff;
+  --color-surface: #f8f9ff;
+  --color-surface_bright: #f8f9ff;
+  --color-surface_container: #e4efff;
+  --color-surface_container_high: #daeaff;
+  --color-surface_container_highest: #d3e4fa;
+  --color-surface_container_low: #eef4ff;
+  --color-surface_container_lowest: #ffffff;
+  --color-surface_dim: #cbdcf2;
+  --color-surface_tint: #365f97;
+  --color-surface_variant: #d3e4fa;
+  --color-tertiary: #00394c;
+  --color-tertiary_container: #00516b;
+  --color-tertiary_fixed: #bfe8ff;
+  --color-tertiary_fixed_dim: #8ecff0;
+
+  --shadow-ambient: 0px 12px 32px rgba(12, 29, 45, 0.08);
+  --background-image-signature-gradient: linear-gradient(135deg, #00a2cf, #00769b);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on_surface font-inter antialiased min-h-screen selection:bg-primary selection:text-on_primary;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-manrope font-bold tracking-tight text-on_surface;
+  }
+}
+
+@layer utilities {
+  .glass-header {
+    @apply bg-surface_variant/60 backdrop-blur-[20px] sticky top-0 z-50;
+  }
+  
+  .knowledge-card {
+    @apply bg-surface_container_lowest rounded-xl shadow-ambient border border-outline_variant/20 hover:shadow-[0px_16px_40px_rgba(12,29,45,0.12)] transition-shadow duration-300;
+  }
+  
+  .btn-premium {
+    --accent: var(--color-secondary);
+    --hover-shadows: 8px 8px 16px rgba(0, 0, 0, 0.2), -8px -8px 16px rgba(255, 255, 255, 0.5);
+    background-color: var(--color-primary);
+    color: var(--color-on_primary);
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    border-radius: 9999px;
+    padding: 0.625rem 1.5rem;
+    cursor: pointer;
+    transition: box-shadow ease-in-out 0.3s, background-color ease-in-out 0.1s, transform ease-in-out 0.1s;
+    box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .dark .btn-premium {
+    --hover-shadows: 12px 12px 24px rgba(0, 0, 0, 0.6), -12px -12px 24px rgba(255, 255, 255, 0.03);
+    box-shadow: 6px 6px 12px rgba(0, 0, 0, 0.3), -6px -6px 12px rgba(255, 255, 255, 0.02);
+  }
+
+  .btn-premium:hover {
+    box-shadow: var(--hover-shadows);
+  }
+
+  .btn-premium:active {
+    box-shadow: var(--hover-shadows), var(--accent) 0px 0px 30px 5px;
+    background-color: var(--accent);
+    color: var(--color-on_secondary);
+    transform: scale(0.95);
+  }
+
+  .nav-pill {
+    @apply rounded-full px-4 py-2 font-medium text-sm transition-all duration-200;
+  }
+  
+  .nav-pill-active {
+    @apply bg-secondary_fixed text-on_secondary_fixed;
+  }
+  
+  .nav-pill-inactive {
+    @apply text-on_surface_variant hover:bg-surface_container hover:text-on_surface;
+  }
+}
+
+.dark {
+  --color-background: #090e17;
+  --color-surface: #0b1120;
+  --color-surface_bright: #1c2635;
+  --color-surface_container: #111a28;
+  --color-surface_container_high: #1c2635;
+  --color-surface_container_highest: #283445;
+  --color-surface_container_low: #0f1622;
+  --color-surface_container_lowest: #05080c;
+  --color-surface_dim: #090e17;
+  
+  --color-on_surface: #e9f1ff;
+  --color-on_surface_variant: #a1a9b8;
+  --color-on_background: #e9f1ff;
+  
+  --color-primary: #00a2cf;
+  --color-primary_container: #00769b;
+  --color-on_primary: #ffffff;
+  --color-on_primary_container: #d5e3ff;
+  
+  --color-secondary: #60c6ff;
+  --color-secondary_container: #004c6b;
+  --color-on_secondary: #00354b;
+  --color-on_secondary_container: #c6e7ff;
+  
+  --color-outline: #737781;
+  --color-outline_variant: #434750;
+  
+  --shadow-ambient: 0px 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* Hide the Unicorn Studio Watermark globally */
+a[href*="unicorn.studio"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 2px;
+  width: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-primary);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-secondary);
+}
+
+/* Hide scrollbar entirely for specific elements */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}

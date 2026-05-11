@@ -1,0 +1,298 @@
+/* PremiumSearch.css */
+
+.premium-search-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  isolation: isolate;
+  height: 56px;
+}
+
+.premium-search-input {
+  background-color: var(--color-surface_container_lowest);
+  border: none;
+  width: 301px;
+  height: 56px;
+  border-radius: 12px;
+  color: var(--color-on_surface);
+  padding-inline: 54px;
+  font-size: 14px;
+  font-family: var(--font-manrope);
+  font-weight: 500;
+  transition: all 0.3s;
+  z-index: 5;
+}
+
+.dark .premium-search-input {
+  background-color: #010201; /* Keep deep black for true premium feel in dark mode */
+}
+
+.premium-search-input::placeholder {
+  color: var(--color-outline);
+  opacity: 0.7;
+}
+
+.premium-search-input:focus {
+  outline: none;
+}
+
+/* Layer Stack for the Glow and Borders */
+.ps-layer {
+  position: absolute;
+  inset: -4px;
+  border-radius: 16px;
+  z-index: -1;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+
+.premium-search-container:focus-within .ps-layer {
+  opacity: 1;
+}
+
+/* 1. The Deep Shadow Glow */
+.ps-glow {
+  filter: blur(25px);
+  opacity: 0.3;
+}
+
+.ps-glow::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(60deg);
+  width: 150%;
+  height: 150%;
+  background-image: conic-gradient(
+    transparent,
+    var(--color-primary) 5%,
+    transparent 38%,
+    transparent 50%,
+    var(--color-secondary) 60%,
+    transparent 87%
+  );
+  transition: transform 2s;
+}
+
+/* 2. The Dynamic Border Layers */
+.ps-border-bg, .ps-border-main, .ps-border-white {
+  filter: blur(2px);
+}
+
+.ps-border-bg::before, .ps-border-main::before, .ps-border-white::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(82deg);
+  width: 200%;
+  height: 200%;
+  background-repeat: no-repeat;
+  transition: transform 2s;
+}
+
+/* Dark Border / Deep Depth */
+.ps-border-bg::before {
+  background-image: conic-gradient(
+    transparent,
+    var(--color-primary_container),
+    transparent 10%,
+    transparent 50%,
+    var(--color-secondary_container),
+    transparent 60%
+  );
+}
+
+/* Main Cyan Border */
+.ps-border-main::before {
+  background-image: conic-gradient(
+    transparent,
+    var(--color-primary) 5%,
+    transparent 14%,
+    transparent 50%,
+    var(--color-secondary) 60%,
+    transparent 64%
+  );
+}
+
+/* Highlight / White Shine */
+.ps-border-white::before {
+  background-image: conic-gradient(
+    transparent 0%,
+    var(--color-primary_fixed),
+    transparent 8%,
+    transparent 50%,
+    var(--color-surface_bright),
+    transparent 58%
+  );
+}
+
+/* Rotation States */
+.premium-search-container:hover .ps-glow::before,
+.premium-search-container:hover .ps-border-bg::before,
+.premium-search-container:hover .ps-border-main::before,
+.premium-search-container:hover .ps-border-white::before {
+  transform: translate(-50%, -50%) rotate(-110deg);
+}
+
+.premium-search-container:focus-within .ps-glow::before,
+.premium-search-container:focus-within .ps-border-bg::before,
+.premium-search-container:focus-within .ps-border-main::before,
+.premium-search-container:focus-within .ps-border-white::before {
+  transform: translate(-50%, -50%) rotate(430deg);
+  transition: transform 4s linear;
+}
+
+/* Icons */
+.ps-search-icon {
+  position: absolute;
+  left: 18px;
+  z-index: 6;
+  color: var(--color-primary);
+  transition: all 0.3s;
+}
+
+.ps-filter-btn {
+  position: absolute;
+  right: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  background: linear-gradient(180deg, var(--color-surface_container_high), var(--color-surface_container_lowest));
+  border: 1px solid var(--color-outline_variant);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.ps-filter-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Wifi Loader Animation */
+.wifi-loader-overlay {
+  position: absolute;
+  left: 14px;
+  width: 32px;
+  height: 32px;
+  z-index: 7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#wifi-loader {
+  --background: var(--color-primary_container);
+  --front-color: var(--color-primary);
+  --back-color: var(--color-outline_variant);
+  --text-color: var(--color-on_surface);
+  width: 32px;
+  height: 32px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#wifi-loader svg {
+  position: absolute;
+}
+
+#wifi-loader svg circle {
+  fill: none;
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-100deg);
+  transform-origin: center;
+}
+
+#wifi-loader svg circle.back { stroke: var(--back-color); opacity: 0.3; }
+#wifi-loader svg circle.front { stroke: var(--front-color); }
+
+/* Outer */
+#wifi-loader svg.circle-outer { height: 32px; width: 32px; }
+#wifi-loader svg.circle-outer circle { stroke-dasharray: 62.75 188.25; }
+#wifi-loader svg.circle-outer circle.back { animation: circle-outer135 1.8s ease infinite 0.3s; }
+#wifi-loader svg.circle-outer circle.front { animation: circle-outer135 1.8s ease infinite 0.15s; }
+
+/* Middle */
+#wifi-loader svg.circle-middle { height: 22px; width: 22px; }
+#wifi-loader svg.circle-middle circle { stroke-dasharray: 42.5 127.5; }
+#wifi-loader svg.circle-middle circle.back { animation: circle-middle6123 1.8s ease infinite 0.25s; }
+#wifi-loader svg.circle-middle circle.front { animation: circle-middle6123 1.8s ease infinite 0.1s; }
+
+/* Inner */
+#wifi-loader svg.circle-inner { height: 12px; width: 12px; }
+#wifi-loader svg.circle-inner circle { stroke-dasharray: 22 66; }
+#wifi-loader svg.circle-inner circle.back { animation: circle-inner162 1.8s ease infinite 0.2s; }
+#wifi-loader svg.circle-inner circle.front { animation: circle-inner162 1.8s ease infinite 0.05s; }
+
+@keyframes circle-outer135 {
+  0% { stroke-dashoffset: 25; }
+  25% { stroke-dashoffset: 0; }
+  65% { stroke-dashoffset: 301; }
+  80% { stroke-dashoffset: 276; }
+  100% { stroke-dashoffset: 276; }
+}
+
+@keyframes circle-middle6123 {
+  0% { stroke-dashoffset: 17; }
+  25% { stroke-dashoffset: 0; }
+  65% { stroke-dashoffset: 204; }
+  80% { stroke-dashoffset: 187; }
+  100% { stroke-dashoffset: 187; }
+}
+
+@keyframes circle-inner162 {
+  0% { stroke-dashoffset: 9; }
+  25% { stroke-dashoffset: 0; }
+  65% { stroke-dashoffset: 106; }
+  80% { stroke-dashoffset: 97; }
+  100% { stroke-dashoffset: 97; }
+}
+
+/* Searching Text Animation */
+.searching-text {
+  position: absolute;
+  bottom: -24px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-primary);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.premium-search-container[data-loading="true"] .searching-text {
+  opacity: 1;
+}
+
+.searching-text::after {
+  content: "Scanning Network...";
+  animation: text-animation76 3s ease infinite;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes text-animation76 {
+  0% { clip-path: inset(0 100% 0 0); }
+  50% { clip-path: inset(0); }
+  100% { clip-path: inset(0 0 0 100%); }
+}
+
+/* Hide Search Icon when loading */
+.premium-search-container[data-loading="true"] .ps-search-icon {
+  opacity: 0;
+  transform: scale(0);
+}

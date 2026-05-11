@@ -1,0 +1,64 @@
+/* MotivationalSpinner.css */
+.motivational-card {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.motivational-loader {
+  display: flex;
+  align-items: center;
+}
+
+.motivational-words {
+  overflow: hidden;
+  position: relative;
+  height: 48px;
+  /* Perfect fading mask at top and bottom */
+  -webkit-mask-image: linear-gradient(transparent 0%, black 20%, black 80%, transparent 100%);
+  mask-image: linear-gradient(transparent 0%, black 20%, black 80%, transparent 100%);
+}
+
+.motivational-word {
+  display: block;
+  height: 48px;
+  line-height: 48px;
+  padding-left: 2px;
+  font-family: var(--font-manrope);
+  font-weight: 800; /* Extra bold */
+  font-size: 24px;
+  letter-spacing: 0.08em;
+  
+  /* Ultra-Premium Gradient Text */
+  background: linear-gradient(135deg, var(--color-primary), #60c6ff, var(--color-primary));
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  
+  /* Vibrant underglow matching the exact theme colors */
+  filter: drop-shadow(0px 4px 12px rgba(0, 162, 207, 0.4));
+  
+  /* Fast snap spinning */
+  animation: spin_premium 12s cubic-bezier(0.75, 0, 0.25, 1) infinite, shine 4s linear infinite;
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
+  }
+}
+
+/* 
+  Calculated transitions for exactly 7 items (6 segments). 
+  Interval: 100 / 6 = 16.66%
+*/
+@keyframes spin_premium {
+  0%, 14% { transform: translateY(0%); }            /* STRATEGY */
+  16.6%, 30.6% { transform: translateY(-100%); }    /* FOCUS */
+  33.3%, 47.3% { transform: translateY(-200%); }    /* DISCIPLINE */
+  50%, 64% { transform: translateY(-300%); }        /* CONSISTENCY */
+  66.6%, 80.6% { transform: translateY(-400%); }    /* PATIENCE */
+  83.3%, 97.3% { transform: translateY(-500%); }    /* MASTERY */
+  100% { transform: translateY(-600%); }            /* Loop back to STRATEGY */
+}

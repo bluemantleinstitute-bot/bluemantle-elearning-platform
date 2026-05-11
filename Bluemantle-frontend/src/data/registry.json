@@ -1,0 +1,181 @@
+{
+  "students": [
+    {
+      "id": "STU-8821",
+      "name": "John Doe",
+      "email": "john@bluemantle.com",
+      "status": "active",
+      "batch": "Batch A",
+      "attendance": 91.6,
+      "progress": 68,
+      "registeredDeviceId": "DEV-MOCK-8821",
+      "lastLogin": "2026-04-26T10:00:00Z"
+    },
+    {
+      "id": "STU-4482",
+      "name": "Julian Mayer",
+      "status": "active",
+      "batch": "Batch A",
+      "attendance": 96,
+      "progress": 42
+    },
+    {
+      "id": "STU-5567",
+      "name": "Sarah Chen",
+      "status": "active",
+      "batch": "Batch B",
+      "attendance": 88.5,
+      "progress": 75
+    }
+  ],
+  "batches": [
+    {
+      "id": "Batch A",
+      "isLive": false,
+      "topic": "Architecture of Modernism: Form & Void",
+      "instructor": "Sarah Chen",
+      "zoomLink": "https://zoom.us/j/batch_2024_modernism"
+    },
+    {
+      "id": "Batch B",
+      "isLive": false,
+      "topic": "Historical Contextualism",
+      "instructor": "Marco Rossi",
+      "zoomLink": "https://zoom.us/j/batch_2024_hist_context"
+    }
+  ],
+  "schedule": [
+    {
+      "id": 1,
+      "date": "Oct 25, 2026",
+      "time": "10:00 AM",
+      "teacher": "Sarah Chen",
+      "batch": "Batch A",
+      "topic": "Options Pricing Models"
+    },
+    {
+      "id": 2,
+      "date": "Oct 26, 2026",
+      "time": "02:00 PM",
+      "teacher": "Sarah Chen",
+      "batch": "Batch A",
+      "topic": "Macroeconomics Recap"
+    }
+  ],
+  "appeals": [],
+  "courseCatalog": [
+    {
+      "id": "course-1",
+      "title": "Advanced Technical Analysis",
+      "description": "Master the art of reading price action, volume, and indicators to predict market movements with high precision.",
+      "instructor": "Sarah Chen",
+      "thumbnail": "/course-ta.jpg",
+      "modules": [
+        {
+          "id": "mod-1",
+          "title": "Foundations of Price Action",
+          "chapters": [
+            {
+              "id": "ch-1-1",
+              "title": "Introduction to Candlestick Patterns",
+              "description": "Learn the basics of candlestick charting, including how to read individual candles and understand the psychology behind price movements.",
+              "duration": "15:20",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-1-2",
+              "title": "Support and Resistance Dynamics",
+              "description": "Master the identification of key supply and demand zones to find high-probability entry and exit points.",
+              "duration": "22:45",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-1-3",
+              "title": "Volume Analysis Principles",
+              "description": "Discover how volume confirms price trends and helps identify potential reversals before they happen.",
+              "duration": "18:10",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-1777219942715",
+              "title": "New ChapterAdvanced Chart Patterns",
+              "duration": "00:00",
+              "videoUrl": "https://www.youtube.com/embed/"
+            }
+          ]
+        },
+        {
+          "id": "mod-2",
+          "title": "Complex Indicator Strategies",
+          "chapters": [
+            {
+              "id": "ch-2-1",
+              "title": "Divergence Trading with RSI",
+              "duration": "20:00",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-2-2",
+              "title": "MACD Zero-Line Crossover",
+              "duration": "25:30",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-2-3",
+              "title": "Bollinger Band Squeeze Plays",
+              "duration": "19:15",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            },
+            {
+              "id": "ch-2-4",
+              "title": "Advanced Fibonacci Tools",
+              "duration": "30:00",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            }
+          ]
+        },
+        {
+          "id": "mod-1777223146313",
+          "title": "moduel 3",
+          "chapters": [
+            {
+              "id": "ch-1777223163981",
+              "title": "New Chapter",
+              "duration": "00:00",
+              "videoUrl": "https://www.youtube.com/embed/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "course-2",
+      "title": "Risk Management 101",
+      "description": "The most important skill for any trader. Learn how to protect your capital and manage your emotions.",
+      "instructor": "Sarah Chen",
+      "thumbnail": "/course-rm.jpg",
+      "modules": [
+        {
+          "id": "mod-rm-1",
+          "title": "Risk-to-Reward Ratios",
+          "chapters": [
+            {
+              "id": "ch-rm-1-1",
+              "title": "Calculating Position Size",
+              "duration": "12:00",
+              "videoUrl": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "userProgress": {
+    "STU-8821": {
+      "course-1": {
+        "lastModuleId": "mod-2",
+        "lastChapterId": "ch-2-4"
+      }
+    }
+  }
+}

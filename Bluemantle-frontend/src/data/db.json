@@ -1,0 +1,66 @@
+{
+  "students": [
+    {
+      "id": "STU-8821",
+      "name": "Julian Manning",
+      "batch": "Batch Alpha '24",
+      "status": "active",
+      "reason": "",
+      "xp": 1250
+    },
+    {
+      "id": "STU-9042",
+      "name": "Elena Kostic",
+      "batch": "Batch Delta '23",
+      "status": "suspended",
+      "reason": "Attendance",
+      "xp": 840
+    },
+    {
+      "id": "STU-1159",
+      "name": "Ray Warren",
+      "batch": "Batch Alpha '24",
+      "status": "suspended",
+      "reason": "Conduct",
+      "xp": 2100
+    }
+  ],
+  "batches": [
+    {
+      "id": "BA-24",
+      "name": "Batch Alpha '24",
+      "isLive": false,
+      "currentMentor": "Sarah Chen",
+      "topic": "Advanced Statistical Analysis"
+    }
+  ],
+  "schedule": [
+    {
+      "id": "S-001",
+      "date": "MON 24",
+      "time": "09:00 - 11:30 AM",
+      "batch": "ENG-2023-A",
+      "topic": "Applied Physics II",
+      "status": "WhatsApp Sent"
+    },
+    {
+      "id": "S-002",
+      "date": "TUE 25",
+      "time": "02:00 - 04:00 PM",
+      "batch": "SCI-GRAD-X",
+      "topic": "Quantum Mechanics",
+      "status": "No Notifications Sent"
+    }
+  ],
+  "appeals": [
+    {
+      "id": "APP-001",
+      "studentId": "STU-8821",
+      "name": "Julian Manning",
+      "reason": "Plagiarism",
+      "message": "I have completed the ethics course...",
+      "status": "Reviewing",
+      "timestamp": "Oct 12, 2023"
+    }
+  ]
+}

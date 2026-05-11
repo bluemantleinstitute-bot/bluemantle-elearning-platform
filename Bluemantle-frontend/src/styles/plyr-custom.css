@@ -1,0 +1,36 @@
+/* Ensure iframe takes full container but respect Plyr's wrapping */
+.plyr__video-embed iframe {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Precision Shields: Block specific areas of the YouTube layer */
+.yt-interaction-shield {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: auto;
+    background: transparent;
+}
+
+/* Ensure our controls are always on top and clickable */
+.plyr__controls, .plyr__control--overlaid {
+    z-index: 30 !important;
+    pointer-events: auto !important;
+}
+
+/* Blue Mantle Custom Aesthetics */
+.plyr--full-ui.plyr--video .plyr__control--overlaid {
+    background: rgba(124, 58, 237, 0.8); /* Purple primary */
+}
+
+/* Custom styling to match Blue Mantle aesthetic */
+.plyr--full-ui.plyr--video .plyr__control--overlaid {
+    background: rgba(var(--primary), 0.8);
+}
+
+.plyr--full-ui.plyr--video .plyr__control.plyr__tab-focus, 
+.plyr--full-ui.plyr--video .plyr__control:hover, 
+.plyr--full-ui.plyr--video .plyr__control[aria-expanded=true] {
+    background: var(--primary);
+}
