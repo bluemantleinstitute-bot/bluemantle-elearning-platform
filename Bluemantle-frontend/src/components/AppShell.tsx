@@ -1,6 +1,5 @@
 import { SidebarNavigation, UserRole } from "./SidebarNavigation";
 import { GlassHeader } from "./GlassHeader";
-import { DNABackground } from "./DNABackground";
 import { DashboardAmbience } from "./DashboardAmbience";
 import { MarketHeartbeat } from "./MarketHeartbeat";
 

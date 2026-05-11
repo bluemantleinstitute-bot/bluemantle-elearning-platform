@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { DNABackground } from "@/components/DNABackground";
+import { ClientOnlyDNABackground } from "@/components/ClientOnlyDNABackground";
 import { SecurityGuard } from "@/components/SecurityGuard";
 
 export const metadata: Metadata = {
@@ -17,7 +17,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-inter antialiased bg-surface text-on_surface">
         <SecurityGuard>
-          <DNABackground />
+          <ClientOnlyDNABackground />
           {children}
         </SecurityGuard>
       </body>
