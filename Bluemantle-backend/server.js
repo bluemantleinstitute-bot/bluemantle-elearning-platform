@@ -1,151 +1,132 @@
-const User = require("../models/user");
-const { comparePassword } = require("../utils/hashPassword");
-const generateToken = require("../utils/generateToken");
-const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
+require("dotenv").config();
+const dns = require("dns");
 
-// FIX: sameSite must be "none" (not "strict") because the frontend (vercel.app)
-// and backend (onrender.com) are on different domains. "strict" silently blocks
-// all cross-origin cookies, so the session token never reaches the browser.
-// sameSite "none" requires secure:true, which is already set in production.
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,           // always true — both domains are HTTPS
-  sameSite: "none",       // required for cross-origin cookie delivery
-  maxAge: 24 * 60 * 60 * 1000, // 1 day
-};
+const dnsServers = (process.env.DNS_SERVERS || "1.1.1.1,8.8.8.8")
+  .split(",")
+  .map((server) => server.trim())
+  .filter(Boolean);
 
-const COOKIE_OPTIONS_PUBLIC = {
-  httpOnly: false,        // readable by JS (role, name)
-  secure: true,
-  sameSite: "none",
-  maxAge: 24 * 60 * 60 * 1000,
-};
+dns.setServers(dnsServers);
 
-const setTokenCookie    = (res, token) => res.cookie("token",     token, COOKIE_OPTIONS);
-const setRoleCookie     = (res, role)  => res.cookie("user_role", role,  COOKIE_OPTIONS_PUBLIC);
-const setUserNameCookie = (res, name)  => res.cookie("user_name", name,  COOKIE_OPTIONS_PUBLIC);
+const express = require("express");
+const cors = require("cors");
+const cookieParser = require("cookie-parser");
+const validateEnv = require("./config/envValidator");
+const connectDB = require("./config/db");
+const initScheduler = require("./utils/scheduler");
 
-// Login a user
-exports.login = async (req, res) => {
-    try {
-        const { userId, password, deviceId } = req.body; 
-        
-        // Frontend uses 'userId' but DB uses 'signInId'
-        const signInId = userId || req.body.signInId;
+const rateLimit = require("express-rate-limit");
+const app = express();
+const helmet = require("helmet");
 
-        // Basic validation
-        if (!signInId || !password) {
-            return res.status(400).json({ success: false, message: "Please provide userId and password" });
-        }
+// FIX 1: Trust Render's reverse proxy so express-rate-limit
+// can read X-Forwarded-For without throwing a ValidationError
+app.set("trust proxy", 1);
 
-        // Find user by signInId
-        const user = await User.findOne({ signInId });
-        if (!user) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
-        }
+const testRoutes = require("./routes/testRoutes");
+const authRoutes = require("./routes/authRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const courseRoutes = require("./routes/courseRoutes");
+const moduleRoutes = require("./routes/moduleRoutes");
+const videoRoutes = require("./routes/videoRoutes");
+const noteRoutes = require("./routes/noteRoutes");
+const batchRoutes = require("./routes/batchRoutes");
+const liveClassRoutes = require("./routes/liveClassRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
+const progressRoutes = require("./routes/progressRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+const institutionalRoutes = require("./routes/institutionalRoutes");
+const userRoutes = require("./routes/userRoutes");
+const teacherRoutes = require("./routes/teacherRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
+const doubtRoutes = require("./routes/doubtRoutes");
+const zoomRoutes = require("./routes/zoomRoutes");
 
-        // Verify password
-        const isMatch = await comparePassword(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({ success: false, message: "Invalid credentials" });
-        }
+// FIX 2: Normalise origins so trailing slashes never cause a mismatch
+const normalizeOrigin = (origin) => origin.replace(/\/+$/, "");
 
-        // Device-Based Access Control logic (Applicable only to students)
-        const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.FRONTEND_URL ||
+  "https://bmit-5od1.vercel.app"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .map(normalizeOrigin)
+  .filter(Boolean);
 
-        if (user.role === "student") {
-            if (!user.deviceId) {
-                // First time login or after admin unlink, bind device
-                user.deviceId = incomingDeviceId;
-            } else if (user.deviceId !== incomingDeviceId) {
-                // Strict device locking
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "Access Denied: Your account is locked to a specific device. Please contact administration to request a device unlink." 
-                });
-            }
-        }
-        
-        // Single Session Enforcement: Generate activeToken
-        const activeToken = crypto.randomBytes(32).toString('hex');
-        user.activeToken = activeToken;
-        user.lastActive = Date.now();
-        await user.save();
+// Validate environment variables before anything else
+validateEnv();
+// Connect to MongoDB
+connectDB();
+// Initialize Cron Scheduler
+initScheduler();
 
-        // Generate JWT token (Payload includes the activeToken for verification middleware)
-        const tokenPayload = { id: user._id, role: user.role, activeToken };
-        const finalToken = jwt.sign(tokenPayload, process.env.JWT_SECRET || "default_secret", { expiresIn: "1d" });
+// Middleware
+app.use(express.json());
+app.use(cookieParser());
 
-        setTokenCookie(res, finalToken);
-        setRoleCookie(res, user.role);
-        setUserNameCookie(res, user.name);
+// FIX 3: CORS with normalised origin comparison + explicit methods/headers
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
-        res.json({
-            success: true,
-            token: finalToken,
-            user: {
-                userId: user.signInId,
-                name: user.name,
-                role: user.role
-            }
-        });
+app.use(helmet());
 
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
+// Rate Limiting (Prevent brute-force)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 1000,
+  message: "Too many requests from this IP, please try again later",
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+});
 
-exports.verifyOtp = async (req, res) => {
-    try {
-        const { userId, otp, deviceId } = req.body;
-        const signInId = userId || req.body.signInId;
+app.use("/api", apiLimiter);
 
-        const user = await User.findOne({ signInId });
-        if (!user || !user.otp || user.otp !== otp || user.otpExpires < Date.now()) {
-            return res.status(401).json({ success: false, message: "Invalid or expired OTP" });
-        }
+// Routes
+app.use("/api/test", testRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/courses", courseRoutes);
+app.use("/api/modules", moduleRoutes);
+app.use("/api/videos", videoRoutes);
+app.use("/api/notes", noteRoutes);
+app.use("/api/batches", batchRoutes);
+app.use("/api/classes", liveClassRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/progress", progressRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/institutional", institutionalRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/teacher", teacherRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/doubts", doubtRoutes);
+app.use("/api/zoom", zoomRoutes);
 
-        const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
-        
-        // Update device and clear OTP
-        user.deviceId = incomingDeviceId;
-        user.otp = null;
-        user.otpExpires = null;
-        
-        const activeToken = crypto.randomBytes(32).toString('hex');
-        user.activeToken = activeToken;
-        user.lastActive = Date.now();
-        await user.save();
+// Root probe
+app.get("/", (req, res) => {
+  res.json({ success: true, message: "API running...", data: {} });
+});
 
-        const finalToken = jwt.sign({ id: user._id, role: user.role, activeToken }, process.env.JWT_SECRET || "default_secret", { expiresIn: "1d" });
+// FIX 4: Health endpoint for UptimeRobot keep-alive pings
+// so the free Render instance never goes to sleep
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
-        setTokenCookie(res, finalToken);
-        setRoleCookie(res, user.role);
-        setUserNameCookie(res, user.name);
+const PORT = process.env.PORT || 5000;
 
-        res.json({
-            success: true,
-            token: finalToken,
-            user: {
-                userId: user.signInId,
-                name: user.name,
-                role: user.role
-            }
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
-
-exports.getMe = async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id).select("-password -plainPassword -activeToken");
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found" });
-        }
-        res.json({ success: true, user });
-    } catch (err) {
-        res.status(500).json({ success: false, message: err.message });
-    }
-};
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
