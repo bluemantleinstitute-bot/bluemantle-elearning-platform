@@ -18,6 +18,7 @@ const initScheduler = require("./utils/scheduler");
 
 const rateLimit = require("express-rate-limit");
 const app = express();
+app.set("trust proxy", 1);
 const helmet = require("helmet");
 const testRoutes = require("./routes/testRoutes");
 const authRoutes = require("./routes/authRoutes");
