@@ -15,11 +15,14 @@ const validateEnv = require("./config/envValidator");
 const connectDB = require("./config/db");
 const initScheduler = require("./utils/scheduler");
 
-
 const rateLimit = require("express-rate-limit");
 const app = express();
-app.set("trust proxy", 1);
 const helmet = require("helmet");
+
+// FIX 1: Trust Render's reverse proxy so express-rate-limit
+// can read X-Forwarded-For without throwing a ValidationError
+app.set("trust proxy", 1);
+
 const testRoutes = require("./routes/testRoutes");
 const authRoutes = require("./routes/authRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -40,9 +43,14 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const doubtRoutes = require("./routes/doubtRoutes");
 const zoomRoutes = require("./routes/zoomRoutes");
 
+// FIX 2: Normalise origins so trailing slashes never cause a mismatch
 const normalizeOrigin = (origin) => origin.replace(/\/+$/, "");
 
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "https://bmit-5od1.vercel.app")
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  process.env.FRONTEND_URL ||
+  "https://bmit-5od1.vercel.app,https://bmit-5od1-git-master-bluemantleinstitute-bots-projects.vercel.app"
+)
   .split(",")
   .map((origin) => origin.trim())
   .map(normalizeOrigin)
@@ -58,25 +66,30 @@ initScheduler();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
-      return callback(null, true);
-    }
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
+
+// FIX 3: CORS with normalised origin comparison + explicit methods/headers
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
 app.use(helmet());
 
 // Rate Limiting (Prevent brute-force)
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 1000, // Increased limit for development/active sessions
+  limit: 1000,
   message: "Too many requests from this IP, please try again later",
-  standardHeaders: "draft-7", 
+  standardHeaders: "draft-7",
   legacyHeaders: false,
 });
 
@@ -103,17 +116,17 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/doubts", doubtRoutes);
 app.use("/api/zoom", zoomRoutes);
 
-// Test route
+// Root probe
 app.get("/", (req, res) => {
-  res.json({
-    success: true,
-    message: "API running...",
-    data: {}
-  });
+  res.json({ success: true, message: "API running...", data: {} });
 });
+
+// FIX 4: Health endpoint for UptimeRobot keep-alive pings
+// so the free Render instance never goes to sleep
+app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`); 
+  console.log(`Server running on port ${PORT}`);
 });
