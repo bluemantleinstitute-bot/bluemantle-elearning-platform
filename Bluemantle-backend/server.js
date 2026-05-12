@@ -41,7 +41,7 @@ const zoomRoutes = require("./routes/zoomRoutes");
 
 const normalizeOrigin = (origin) => origin.replace(/\/+$/, "");
 
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "https://bmit-5od1.vercel.app/")
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "https://bmit-5od1.vercel.app")
   .split(",")
   .map((origin) => origin.trim())
   .map(normalizeOrigin)
