@@ -39,9 +39,12 @@ const uploadRoutes = require("./routes/uploadRoutes");
 const doubtRoutes = require("./routes/doubtRoutes");
 const zoomRoutes = require("./routes/zoomRoutes");
 
-const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "http://localhost:3000")
+const normalizeOrigin = (origin) => origin.replace(/\/+$/, "");
+
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.FRONTEND_URL || "https://bmit-5od1.vercel.app/")
   .split(",")
   .map((origin) => origin.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
 
 // Validate environment variables before anything else
@@ -56,12 +59,14 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(normalizeOrigin(origin))) {
       return callback(null, true);
     }
     return callback(new Error("Not allowed by CORS"));
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 app.use(helmet());
 
