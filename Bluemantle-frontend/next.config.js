@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const path = require('path');
 
 const apiOrigin = (() => {
   try {
@@ -15,6 +16,12 @@ const nextConfig = {
 
   typescript: {
     ignoreBuildErrors: true,
+  },
+
+  webpack: (config) => {
+    config.resolve.alias['react'] = path.resolve(__dirname, 'node_modules/react');
+    config.resolve.alias['react-dom'] = path.resolve(__dirname, 'node_modules/react-dom');
+    return config;
   },
 
   async headers() {
