@@ -4,33 +4,27 @@ const generateToken = require("../utils/generateToken");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
-// Helper for HTTP-only cookie
-const setTokenCookie = (res, token) => {
-    res.cookie("token", token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
-    });
+// FIX: sameSite must be "none" (not "strict") because the frontend (vercel.app)
+// and backend (onrender.com) are on different domains. "strict" silently blocks
+// all cross-origin cookies, so the session token never reaches the browser.
+// sameSite "none" requires secure:true, which is already set in production.
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: true,           // always true — both domains are HTTPS
+  sameSite: "none",       // required for cross-origin cookie delivery
+  maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 
-const setRoleCookie = (res, role) => {
-    res.cookie("user_role", role, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 24 * 60 * 60 * 1000
-    });
+const COOKIE_OPTIONS_PUBLIC = {
+  httpOnly: false,        // readable by JS (role, name)
+  secure: true,
+  sameSite: "none",
+  maxAge: 24 * 60 * 60 * 1000,
 };
 
-const setUserNameCookie = (res, name) => {
-    res.cookie("user_name", name, {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 24 * 60 * 60 * 1000
-    });
-};
+const setTokenCookie    = (res, token) => res.cookie("token",     token, COOKIE_OPTIONS);
+const setRoleCookie     = (res, role)  => res.cookie("user_role", role,  COOKIE_OPTIONS_PUBLIC);
+const setUserNameCookie = (res, name)  => res.cookie("user_name", name,  COOKIE_OPTIONS_PUBLIC);
 
 // Login a user
 exports.login = async (req, res) => {
