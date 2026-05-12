@@ -2,23 +2,21 @@
 
 const apiOrigin = (() => {
   try {
-    return new URL(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").origin;
+    return new URL(
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"
+    ).origin;
   } catch {
     return "http://localhost:5000";
   }
 })();
 
 const nextConfig = {
-  turbopack: {
-    root: process.cwd(),
-  },
+  reactStrictMode: false,
+
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    cpus: 1,
-    workerThreads: true,
-  },
+
   async headers() {
     return [
       {
