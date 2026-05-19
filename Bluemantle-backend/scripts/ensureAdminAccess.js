@@ -26,8 +26,7 @@ const admins = [
     signInId: process.env.SECONDARY_ADMIN_ID || "admin_ops",
     name: process.env.SECONDARY_ADMIN_NAME || "Operations Admin",
     email: process.env.SECONDARY_ADMIN_EMAIL || "admin2@bluemantle.com",
-    password: process.env.SECONDARY_ADMIN_PASSWORD || null,
-    generatedPassword: generatedSecondaryPassword,
+    password: process.env.SECONDARY_ADMIN_PASSWORD || "admin@2",
   },
 ];
 
