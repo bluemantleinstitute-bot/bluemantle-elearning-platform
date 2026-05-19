@@ -1,5 +1,11 @@
 const User = require("../models/user");
 const Batch = require("../models/Batch");
+const Attendance = require("../models/Attendance");
+const Progress = require("../models/Progress");
+const Doubt = require("../models/Doubt");
+const Appeal = require("../models/Appeal");
+const LiveClass = require("../models/LiveClass");
+const Note = require("../models/Note");
 const { hashPassword } = require("../utils/hashPassword");
 const crypto = require("crypto");
 
@@ -196,6 +202,75 @@ exports.unlinkDevice = async (req, res) => {
         await user.save();
         
         res.json({ success: true, message: "Device unlinked successfully" });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (id === req.user.id) {
+            return res.status(400).json({ success: false, message: "You cannot delete your own account." });
+        }
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (!["student", "teacher"].includes(user.role)) {
+            return res.status(403).json({ success: false, message: "Only student and teacher accounts can be deleted here." });
+        }
+
+        if (user.role === "teacher") {
+            const activeClass = await LiveClass.findOne({
+                teacherId: user._id,
+                status: { $in: ["scheduled", "live"] }
+            }).select("_id topic status");
+
+            if (activeClass) {
+                return res.status(409).json({
+                    success: false,
+                    message: "This teacher has scheduled or live classes. Reassign or finish those sessions before deleting."
+                });
+            }
+
+            await Batch.updateMany({ teacherId: user._id }, { $unset: { teacherId: "" } });
+            await Doubt.updateMany(
+                { instructorId: user._id, status: { $ne: "Resolved" } },
+                { $set: { instructorId: null } }
+            );
+            await Note.updateMany({ uploadedBy: user._id }, { $unset: { uploadedBy: "" } });
+        }
+
+        if (user.role === "student") {
+            await Batch.updateMany(
+                { students: user._id },
+                { $pull: { students: user._id } }
+            );
+            await Attendance.deleteMany({ studentId: user._id });
+            await Progress.deleteMany({ userId: user._id });
+            await Doubt.deleteMany({ studentId: user._id });
+            await Appeal.deleteMany({ studentId: user._id });
+            await Note.updateMany(
+                {},
+                {
+                    $pull: {
+                        unlockedForStudents: user._id,
+                        accessLog: { studentId: user._id }
+                    }
+                }
+            );
+        }
+
+        await User.findByIdAndDelete(user._id);
+
+        res.json({
+            success: true,
+            message: `${user.role === "teacher" ? "Teacher" : "Student"} account deleted successfully`
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
