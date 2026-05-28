@@ -29,13 +29,15 @@ router.post("/", authMiddleware, upload.single("file"), (req, res) => {
             return res.status(400).json({ success: false, message: "No file uploaded" });
         }
         
-        // Return public URL (assuming express.static is set up for 'public' folder)
         const fileUrl = `/uploads/${req.file.filename}`;
+        const protocol = req.get("x-forwarded-proto") || req.protocol;
+        const publicUrl = `${protocol}://${req.get("host")}${fileUrl}`;
         
         res.json({
             success: true,
             message: "File uploaded successfully",
-            url: fileUrl
+            url: publicUrl,
+            path: fileUrl
         });
     } catch (error) {
         res.status(500).json({ success: false, message: "Upload failed" });
