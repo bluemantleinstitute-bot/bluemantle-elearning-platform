@@ -100,6 +100,12 @@ exports.getUsers = async (req, res) => {
             if (user.role === "teacher") {
                 batchesCount = await Batch.countDocuments({ teacherId: user._id });
             }
+            const activeSessions = (user.activeSessions || []).map(session => ({
+                deviceId: session.deviceId,
+                userAgent: session.userAgent,
+                lastActive: session.lastActive,
+                createdAt: session.createdAt
+            }));
             return {
                 id: user._id,
                 name: user.name,
@@ -120,7 +126,9 @@ exports.getUsers = async (req, res) => {
                 lastActive: user.lastActive,
                 batches: batchesCount,
                 deviceId: user.deviceId,
-                deviceStatus: user.deviceStatus
+                deviceStatus: user.deviceStatus,
+                activeSessions,
+                sessionCount: activeSessions.length
             };
         }));
 
@@ -130,6 +138,86 @@ exports.getUsers = async (req, res) => {
             users: formattedUsers
         });
 
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.updateUserProfileByAdmin = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const allowedFields = ["name", "email", "title", "description", "linkedin", "mobileNumber", "profilePicture"];
+        const updates = {};
+
+        allowedFields.forEach(field => {
+            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+                updates[field] = req.body[field] || "";
+            }
+        });
+
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (user.role !== "teacher") {
+            return res.status(403).json({ success: false, message: "Only teacher profiles can be edited from this panel." });
+        }
+
+        Object.assign(user, updates);
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Teacher profile updated successfully",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                userId: user.signInId,
+                role: user.role,
+                status: user.status,
+                title: user.title,
+                description: user.description,
+                linkedin: user.linkedin,
+                mobileNumber: user.mobileNumber,
+                profilePicture: user.profilePicture,
+                lastActive: user.lastActive,
+                activeSessions: (user.activeSessions || []).map(session => ({
+                    deviceId: session.deviceId,
+                    userAgent: session.userAgent,
+                    lastActive: session.lastActive,
+                    createdAt: session.createdAt
+                })),
+                sessionCount: (user.activeSessions || []).length
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.clearUserSessions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (!["teacher", "admin", "owner"].includes(user.role)) {
+            return res.status(403).json({ success: false, message: "Use device unlink for student accounts." });
+        }
+
+        user.activeSessions = [];
+        user.activeToken = null;
+        user.lastActive = Date.now();
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Active sessions cleared. The account can sign in again from a fresh device."
+        });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
