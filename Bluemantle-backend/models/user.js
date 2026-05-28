@@ -66,6 +66,30 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    activeSessions: [
+      {
+        token: {
+          type: String,
+          required: true,
+        },
+        deviceId: {
+          type: String,
+          default: "",
+        },
+        userAgent: {
+          type: String,
+          default: "",
+        },
+        lastActive: {
+          type: Date,
+          default: Date.now,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      }
+    ],
     title: {
       type: String,
       default: "",
@@ -75,6 +99,10 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
     linkedin: {
+      type: String,
+      default: "",
+    },
+    mobileNumber: {
       type: String,
       default: "",
     },

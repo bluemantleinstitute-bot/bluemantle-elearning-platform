@@ -111,6 +111,10 @@ exports.getUsers = async (req, res) => {
                 batchId: user.batchId ? user.batchId._id : null,
                 status: user.status,
                 title: user.title,
+                description: user.description,
+                linkedin: user.linkedin,
+                mobileNumber: user.mobileNumber,
+                profilePicture: user.profilePicture,
                 level: user.level,
                 totalXP: user.totalXP,
                 lastActive: user.lastActive,
@@ -280,7 +284,7 @@ exports.deleteUser = async (req, res) => {
 exports.listTeachers = async (req, res) => {
     try {
         const teachers = await User.find({ role: "teacher", status: "active" })
-            .select("name title description linkedin")
+            .select("name email title description linkedin mobileNumber profilePicture")
             .lean();
         res.json({ success: true, data: teachers });
     } catch (err) {

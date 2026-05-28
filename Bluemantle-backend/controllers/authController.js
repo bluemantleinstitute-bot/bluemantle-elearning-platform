@@ -25,6 +25,44 @@ const COOKIE_OPTIONS_PUBLIC = {
 const setTokenCookie    = (res, token) => res.cookie("token",     token, COOKIE_OPTIONS);
 const setRoleCookie     = (res, role)  => res.cookie("user_role", role,  COOKIE_OPTIONS_PUBLIC);
 const setUserNameCookie = (res, name)  => res.cookie("user_name", name,  COOKIE_OPTIONS_PUBLIC);
+const clearAuthCookies = (res) => {
+    res.clearCookie("token", COOKIE_OPTIONS);
+    res.clearCookie("user_role", COOKIE_OPTIONS_PUBLIC);
+    res.clearCookie("user_name", COOKIE_OPTIONS_PUBLIC);
+};
+
+const isFacultyAccount = (role) => ["teacher", "admin", "owner"].includes(role);
+
+const registerSession = (user, activeToken, incomingDeviceId, userAgent) => {
+    const now = new Date();
+
+    if (isFacultyAccount(user.role)) {
+        const sessions = Array.isArray(user.activeSessions) ? user.activeSessions : [];
+        user.activeSessions = [
+            ...sessions.filter((session) => session.token !== activeToken),
+            {
+                token: activeToken,
+                deviceId: incomingDeviceId,
+                userAgent: userAgent || "",
+                lastActive: now,
+                createdAt: now,
+            }
+        ]
+            .sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime())
+            .slice(0, 3);
+        user.activeToken = user.activeSessions[0]?.token || activeToken;
+        return;
+    }
+
+    user.activeToken = activeToken;
+    user.activeSessions = [{
+        token: activeToken,
+        deviceId: incomingDeviceId,
+        userAgent: userAgent || "",
+        lastActive: now,
+        createdAt: now,
+    }];
+};
 
 // Login a user
 exports.login = async (req, res) => {
@@ -67,9 +105,9 @@ exports.login = async (req, res) => {
             }
         }
         
-        // Single Session Enforcement: Generate activeToken
+        // Session Enforcement: students stay single-device/single-session, faculty/admin keep up to 3 sessions.
         const activeToken = crypto.randomBytes(32).toString('hex');
-        user.activeToken = activeToken;
+        registerSession(user, activeToken, incomingDeviceId, req.headers['user-agent']);
         user.lastActive = Date.now();
         await user.save();
 
@@ -109,12 +147,14 @@ exports.verifyOtp = async (req, res) => {
         const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
         
         // Update device and clear OTP
-        user.deviceId = incomingDeviceId;
+        if (user.role === "student") {
+            user.deviceId = incomingDeviceId;
+        }
         user.otp = null;
         user.otpExpires = null;
         
         const activeToken = crypto.randomBytes(32).toString('hex');
-        user.activeToken = activeToken;
+        registerSession(user, activeToken, incomingDeviceId, req.headers['user-agent']);
         user.lastActive = Date.now();
         await user.save();
 
@@ -140,12 +180,43 @@ exports.verifyOtp = async (req, res) => {
 
 exports.getMe = async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select("-password -plainPassword -activeToken");
+        const user = await User.findById(req.user.id).select("-password -plainPassword -activeToken -activeSessions");
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
         res.json({ success: true, user });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    }
+};
+
+exports.logout = async (req, res) => {
+    try {
+        let token;
+        if (req.cookies && req.cookies.token) {
+            token = req.cookies.token;
+        } else if (req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+            token = req.headers.authorization.split(" ")[1];
+        }
+
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_secret");
+                if (decoded?.id && decoded?.activeToken) {
+                    await User.findByIdAndUpdate(decoded.id, {
+                        $pull: { activeSessions: { token: decoded.activeToken } },
+                        ...(decoded.role === "student" ? { activeToken: null } : {})
+                    });
+                }
+            } catch (_) {
+                // Logout must remain idempotent even when token is already invalid.
+            }
+        }
+
+        clearAuthCookies(res);
+        res.json({ success: true, message: "Logged out successfully" });
+    } catch (err) {
+        clearAuthCookies(res);
+        res.status(200).json({ success: true, message: "Logged out" });
     }
 };

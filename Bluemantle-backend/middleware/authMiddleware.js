@@ -1,6 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 
+const isFacultyAccount = (role) => ["teacher", "admin", "owner"].includes(role);
+
 const authMiddleware = async (req, res, next) => {
     try {
         let token;
@@ -31,9 +33,29 @@ const authMiddleware = async (req, res, next) => {
             return res.status(401).json({ success: false, message: "Unauthorized: User not found" });
         }
 
-        // Single Session Enforcement check
-        if (user.activeToken !== decoded.activeToken) {
-            // Token does not match the active session, user logged in elsewhere
+        // Session Enforcement: students remain single-session, faculty/admin can keep up to 3 sessions.
+        if (isFacultyAccount(user.role)) {
+            const sessionIndex = (user.activeSessions || []).findIndex((session) => session.token === decoded.activeToken);
+            const isLegacySession = user.activeToken && user.activeToken === decoded.activeToken;
+
+            if (sessionIndex === -1 && !isLegacySession) {
+                res.clearCookie("token");
+                return res.status(401).json({
+                    success: false,
+                    message: "Session expired. Please sign in again."
+                });
+            }
+
+            if (isLegacySession && sessionIndex === -1) {
+                user.activeSessions = [{
+                    token: decoded.activeToken,
+                    deviceId: "",
+                    userAgent: req.headers["user-agent"] || "",
+                    lastActive: new Date(),
+                    createdAt: new Date(),
+                }];
+            }
+        } else if (user.activeToken !== decoded.activeToken) {
             res.clearCookie("token");
             return res.status(401).json({
                 success: false,
@@ -62,6 +84,10 @@ const authMiddleware = async (req, res, next) => {
         const oneMinuteMs = 1 * 60 * 1000;
         if (timeSinceLastActive > oneMinuteMs) {
             user.lastActive = now;
+            if (isFacultyAccount(user.role)) {
+                const session = (user.activeSessions || []).find((item) => item.token === decoded.activeToken);
+                if (session) session.lastActive = now;
+            }
             await user.save();
         }
 

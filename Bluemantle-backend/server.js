@@ -11,6 +11,7 @@ dns.setServers(dnsServers);
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 const validateEnv = require("./config/envValidator");
 const connectDB = require("./config/db");
 const initScheduler = require("./utils/scheduler");
@@ -73,6 +74,7 @@ initScheduler();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // FIX 3: CORS with normalised origin comparison + explicit methods/headers
 app.use(
