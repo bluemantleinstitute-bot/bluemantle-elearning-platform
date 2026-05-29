@@ -1,13 +1,19 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { logoutAndRedirect } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 export function SessionManager() {
+  const router = useRouter();
   const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes
 
   const logout = useCallback(() => {
-    logoutAndRedirect();
+    // Clear cookies on session expiry
+    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    document.cookie = "user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    localStorage.removeItem("bluemantle_session");
+    window.location.href = "/";
   }, []);
 
   useEffect(() => {

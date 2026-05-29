@@ -14,15 +14,6 @@ const apiOrigin = (() => {
 const nextConfig = {
   reactStrictMode: false,
 
-  experimental: {
-    cpus: 1,
-    workerThreads: true,
-  },
-
-  turbopack: {
-    root: path.resolve(__dirname),
-  },
-
   typescript: {
     ignoreBuildErrors: true,
   },

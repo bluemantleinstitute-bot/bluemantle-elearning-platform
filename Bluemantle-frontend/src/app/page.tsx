@@ -5,7 +5,6 @@ import { KnowledgeCard, CardHeader, CardBody } from "@/components/KnowledgeCard"
 import { cn } from "@/lib/utils";
 import { ShieldAlert } from "lucide-react";
 import { apiRequest } from "@/lib/api";
-import { getStableDeviceId } from "@/lib/device";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,14 +15,6 @@ export default function LoginPage() {
   const [isOtpStep, setIsOtpStep] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
-  const goToDashboard = (role: string) => {
-    if (role === "student") window.location.replace("/student");
-    else if (role === "teacher") window.location.replace("/teacher");
-    else if (role === "admin" || role === "owner") window.location.replace("/admin");
-    else router.replace("/");
-  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,16 +22,18 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const deviceId = getStableDeviceId();
       const data = await apiRequest("/auth/login", {
         method: "POST",
-        body: JSON.stringify({ userId: email, password, deviceId }),
+        body: JSON.stringify({ userId: email, password }),
       });
 
       if (data.requireOtp) {
         setIsOtpStep(true);
       } else if (data.success) {
-        goToDashboard(data.user.role);
+        // Redirect based on role
+        if (data.user.role === "student") router.push("/student");
+        else if (data.user.role === "teacher") router.push("/teacher");
+        else if (data.user.role === "admin" || data.user.role === "owner") router.push("/admin");
       }
     } catch (err: any) {
       setError(err.message || "Invalid credentials or unauthorized account.");
@@ -58,14 +51,15 @@ export default function LoginPage() {
 
     try {
       const otp = otpDigits.join("");
-      const deviceId = getStableDeviceId();
       const data = await apiRequest("/auth/verify-otp", {
         method: "POST",
-        body: JSON.stringify({ userId: email, otp, deviceId }),
+        body: JSON.stringify({ userId: email, otp }),
       });
 
       if (data.success) {
-        goToDashboard(data.user.role);
+        if (data.user.role === "student") router.push("/student");
+        else if (data.user.role === "teacher") router.push("/teacher");
+        else if (data.user.role === "admin" || data.user.role === "owner") router.push("/admin");
       }
     } catch (err: any) {
       setError(err.message || "Invalid or expired OTP");
@@ -73,6 +67,8 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-surface p-6 relative overflow-hidden">

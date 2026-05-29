@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "prebuild": "tsc --noEmit",
-    "build": "next build --webpack",
+    "build": "next build --no-lint",
     "start": "next start",
     "lint": "eslint"
   },
@@ -17,11 +17,11 @@
     "clsx": "^2.1.1",
     "lodash": "^4.18.1",
     "lucide-react": "^1.8.0",
-    "next": "16.2.6",
+    "next": "15.5.7",
     "plyr": "^3.8.4",
     "plyr-react": "^6.0.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
     "redux": "4.2.1",
     "redux-thunk": "2.4.2",
     "tailwind-merge": "^3.5.0",
@@ -32,11 +32,15 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "^15.5.7",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   }
 }

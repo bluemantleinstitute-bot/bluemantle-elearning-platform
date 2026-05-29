@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { KnowledgeCard, CardBody } from "@/components/KnowledgeCard";
 import {
   ArrowLeft, Plus, Trash2, GripVertical,
   Save, Video, FileText, Layout, RefreshCw, ChevronDown, ChevronRight, X
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { db } from "@/lib/db";
 import { apiRequest } from "@/lib/api";
 
@@ -102,9 +101,8 @@ function ChapterRow({ chapter, onUpdate, onDelete }: { chapter: any, onUpdate: (
   );
 }
 
-export default function TeacherCourseEditor() {
-  const params = useParams<{ courseId: string }>();
-  const courseId = params.courseId;
+export default function TeacherCourseEditor({ params }: { params: Promise<{ courseId: string }> }) {
+  const { courseId } = use(params);
   const [course, setCourse] = useState<any>(null);
   const [modules, setModules] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
