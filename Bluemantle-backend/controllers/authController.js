@@ -26,9 +26,9 @@ const setTokenCookie    = (res, token) => res.cookie("token",     token, COOKIE_
 const setRoleCookie     = (res, role)  => res.cookie("user_role", role,  COOKIE_OPTIONS_PUBLIC);
 const setUserNameCookie = (res, name)  => res.cookie("user_name", name,  COOKIE_OPTIONS_PUBLIC);
 const clearAuthCookies = (res) => {
-    res.clearCookie("token", COOKIE_OPTIONS);
-    res.clearCookie("user_role", COOKIE_OPTIONS_PUBLIC);
-    res.clearCookie("user_name", COOKIE_OPTIONS_PUBLIC);
+    res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "none", path: "/" });
+    res.clearCookie("user_role", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
+    res.clearCookie("user_name", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
 };
 
 const isFacultyAccount = (role) => ["teacher", "admin", "owner"].includes(role);
