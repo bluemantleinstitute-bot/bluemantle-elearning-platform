@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { ShieldAlert, Lock } from "lucide-react";
 import { SessionManager } from "./SessionManager";
+import { logoutAndRedirect } from "@/lib/api";
 
 export function SecurityGuard({ children }: { children: React.ReactNode }) {
   const [isSecure, setIsSecure] = useState(true);
   const [securityMessage, setSecurityMessage] = useState("");
-  const router = useRouter();
   const pathname = usePathname();
 
   const isStudentRoute = pathname?.startsWith("/student");
@@ -54,11 +54,7 @@ export function SecurityGuard({ children }: { children: React.ReactNode }) {
       if (isDevToolsOpen) {
          setSecurityMessage("Security Policy: Developer tools detected. Logging out...");
          setTimeout(() => {
-           document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-           document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-           document.cookie = "user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-           localStorage.removeItem("bluemantle_session");
-           window.location.href = "/"; // Force hard redirect to login
+           logoutAndRedirect();
          }, 1500);
       }
     };

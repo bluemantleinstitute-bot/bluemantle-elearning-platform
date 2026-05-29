@@ -3,6 +3,32 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
+export function clearClientAuthState() {
+  if (typeof window === "undefined") return;
+
+  document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  document.cookie = "user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+  localStorage.removeItem("bluemantle_session");
+  sessionStorage.clear();
+}
+
+export async function logoutAndRedirect() {
+  if (typeof window === "undefined") return;
+
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+  } catch {
+    // Local cleanup still matters if the network is unavailable.
+  } finally {
+    clearClientAuthState();
+    window.location.replace("/");
+  }
+}
+
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
@@ -42,9 +68,7 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
 
       if (!isAuthEndpoint && (response.status === 401 || response.status === 403)) {
         if (!isServer) {
-          document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-          document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-          document.cookie = "user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          clearClientAuthState();
         }
         if (isServer) {
           const { redirect } = await import("next/navigation");

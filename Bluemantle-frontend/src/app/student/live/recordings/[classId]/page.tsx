@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Clock, Calendar, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { db } from "@/lib/db";
 import dynamic from 'next/dynamic';
 import { apiRequest } from "@/lib/api";
@@ -12,8 +13,9 @@ const PremiumVideoPlayer = dynamic(
   { ssr: false, loading: () => <div className="aspect-video bg-black rounded-2xl animate-pulse" /> }
 );
 
-export default function LiveRecordingPlayer({ params }: { params: Promise<{ classId: string }> }) {
-  const { classId } = use(params);
+export default function LiveRecordingPlayer() {
+  const params = useParams<{ classId: string }>();
+  const classId = params.classId;
   const [recording, setRecording] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [attendanceMarked, setAttendanceMarked] = useState(false);

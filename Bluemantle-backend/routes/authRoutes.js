@@ -8,5 +8,6 @@ router.post("/login", validateLogin, login);
 router.post("/verify-otp", verifyOtp);
 router.post("/logout", logout);
 router.get("/me", authMiddleware, getMe);
+router.post("/logout", logout);
 
 module.exports = router;

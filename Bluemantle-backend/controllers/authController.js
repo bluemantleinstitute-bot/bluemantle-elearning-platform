@@ -1,37 +1,60 @@
 const User = require("../models/user");
 const { comparePassword } = require("../utils/hashPassword");
-const generateToken = require("../utils/generateToken");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
-// FIX: sameSite must be "none" (not "strict") because the frontend (vercel.app)
-// and backend (onrender.com) are on different domains. "strict" silently blocks
-// all cross-origin cookies, so the session token never reaches the browser.
-// sameSite "none" requires secure:true, which is already set in production.
+const isHttpsDeployment =
+    process.env.NODE_ENV === "production" ||
+    process.env.RENDER === "true" ||
+    (process.env.FRONTEND_URL || "").startsWith("https://");
+
+const sameSite = isHttpsDeployment ? "none" : "lax";
+const secure = isHttpsDeployment;
+
 const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: true,           // always true — both domains are HTTPS
-  sameSite: "none",       // required for cross-origin cookie delivery
-  maxAge: 24 * 60 * 60 * 1000, // 1 day
+    httpOnly: true,
+    secure,
+    sameSite,
+    maxAge: 24 * 60 * 60 * 1000,
 };
 
 const COOKIE_OPTIONS_PUBLIC = {
-  httpOnly: false,        // readable by JS (role, name)
-  secure: true,
-  sameSite: "none",
-  maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: false,
+    secure,
+    sameSite,
+    maxAge: 24 * 60 * 60 * 1000,
 };
 
-const setTokenCookie    = (res, token) => res.cookie("token",     token, COOKIE_OPTIONS);
-const setRoleCookie     = (res, role)  => res.cookie("user_role", role,  COOKIE_OPTIONS_PUBLIC);
-const setUserNameCookie = (res, name)  => res.cookie("user_name", name,  COOKIE_OPTIONS_PUBLIC);
+const CLEAR_COOKIE_OPTIONS = {
+    secure,
+    sameSite,
+    path: "/",
+};
+
+const CLIENT_DEVICE_PREFIX = "bmit-device-";
+
+const setTokenCookie = (res, token) => res.cookie("token", token, COOKIE_OPTIONS);
+const setRoleCookie = (res, role) => res.cookie("user_role", role, COOKIE_OPTIONS_PUBLIC);
+const setUserNameCookie = (res, name) => res.cookie("user_name", name, COOKIE_OPTIONS_PUBLIC);
+
 const clearAuthCookies = (res) => {
-    res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "none", path: "/" });
-    res.clearCookie("user_role", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
-    res.clearCookie("user_name", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
+    res.clearCookie("token", { ...CLEAR_COOKIE_OPTIONS, httpOnly: true });
+    res.clearCookie("user_role", { ...CLEAR_COOKIE_OPTIONS, httpOnly: false });
+    res.clearCookie("user_name", { ...CLEAR_COOKIE_OPTIONS, httpOnly: false });
 };
 
 const isFacultyAccount = (role) => ["teacher", "admin", "owner"].includes(role);
+
+const isClientDeviceId = (deviceId) => {
+    return typeof deviceId === "string" && deviceId.startsWith(CLIENT_DEVICE_PREFIX);
+};
+
+const makeFallbackDeviceId = (req) => {
+    return crypto
+        .createHash("sha256")
+        .update(`${req.ip || ""}:${req.headers["user-agent"] || ""}`)
+        .digest("hex");
+};
 
 const registerSession = (user, activeToken, incomingDeviceId, userAgent) => {
     const now = new Date();
@@ -46,7 +69,7 @@ const registerSession = (user, activeToken, incomingDeviceId, userAgent) => {
                 userAgent: userAgent || "",
                 lastActive: now,
                 createdAt: now,
-            }
+            },
         ]
             .sort((a, b) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime())
             .slice(0, 3);
@@ -55,63 +78,57 @@ const registerSession = (user, activeToken, incomingDeviceId, userAgent) => {
     }
 
     user.activeToken = activeToken;
-    user.activeSessions = [{
-        token: activeToken,
-        deviceId: incomingDeviceId,
-        userAgent: userAgent || "",
-        lastActive: now,
-        createdAt: now,
-    }];
+    user.activeSessions = [
+        {
+            token: activeToken,
+            deviceId: incomingDeviceId,
+            userAgent: userAgent || "",
+            lastActive: now,
+            createdAt: now,
+        },
+    ];
 };
 
-// Login a user
 exports.login = async (req, res) => {
     try {
-        const { userId, password, deviceId } = req.body; 
-        
-        // Frontend uses 'userId' but DB uses 'signInId'
+        const { userId, password, deviceId } = req.body;
         const signInId = userId || req.body.signInId;
 
-        // Basic validation
         if (!signInId || !password) {
             return res.status(400).json({ success: false, message: "Please provide userId and password" });
         }
 
-        // Find user by signInId
         const user = await User.findOne({ signInId });
         if (!user) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // Verify password
         const isMatch = await comparePassword(password, user.password);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // Device-Based Access Control logic (Applicable only to students)
-        const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
+        const incomingDeviceId = deviceId || makeFallbackDeviceId(req);
 
         if (user.role === "student") {
             if (!user.deviceId) {
-                // First time login or after admin unlink, bind device
+                user.deviceId = incomingDeviceId;
+            } else if (isClientDeviceId(incomingDeviceId) && !isClientDeviceId(user.deviceId)) {
+                // Migrate old proxy/IP based locks to the stable browser device id.
                 user.deviceId = incomingDeviceId;
             } else if (user.deviceId !== incomingDeviceId) {
-                // Strict device locking
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "Access Denied: Your account is locked to a specific device. Please contact administration to request a device unlink." 
+                return res.status(403).json({
+                    success: false,
+                    message: "Access Denied: Your account is locked to a specific device. Please contact administration to request a device unlink.",
                 });
             }
         }
-        
-        // Session Enforcement: students stay single-device/single-session, faculty/admin keep up to 3 sessions.
-        const activeToken = crypto.randomBytes(32).toString('hex');
-        registerSession(user, activeToken, incomingDeviceId, req.headers['user-agent']);
+
+        const activeToken = crypto.randomBytes(32).toString("hex");
+        registerSession(user, activeToken, incomingDeviceId, req.headers["user-agent"]);
         user.lastActive = Date.now();
         await user.save();
 
-        // Generate JWT token (Payload includes the activeToken for verification middleware)
         const tokenPayload = { id: user._id, role: user.role, activeToken };
         const finalToken = jwt.sign(tokenPayload, process.env.JWT_SECRET || "default_secret", { expiresIn: "1d" });
 
@@ -125,10 +142,9 @@ exports.login = async (req, res) => {
             user: {
                 userId: user.signInId,
                 name: user.name,
-                role: user.role
-            }
+                role: user.role,
+            },
         });
-
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
     }
@@ -144,17 +160,16 @@ exports.verifyOtp = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid or expired OTP" });
         }
 
-        const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
-        
-        // Update device and clear OTP
+        const incomingDeviceId = deviceId || makeFallbackDeviceId(req);
+
         if (user.role === "student") {
             user.deviceId = incomingDeviceId;
         }
         user.otp = null;
         user.otpExpires = null;
-        
-        const activeToken = crypto.randomBytes(32).toString('hex');
-        registerSession(user, activeToken, incomingDeviceId, req.headers['user-agent']);
+
+        const activeToken = crypto.randomBytes(32).toString("hex");
+        registerSession(user, activeToken, incomingDeviceId, req.headers["user-agent"]);
         user.lastActive = Date.now();
         await user.save();
 
@@ -170,8 +185,8 @@ exports.verifyOtp = async (req, res) => {
             user: {
                 userId: user.signInId,
                 name: user.name,
-                role: user.role
-            }
+                role: user.role,
+            },
         });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
@@ -205,7 +220,7 @@ exports.logout = async (req, res) => {
                 if (decoded?.id && decoded?.activeToken) {
                     await User.findByIdAndUpdate(decoded.id, {
                         $pull: { activeSessions: { token: decoded.activeToken } },
-                        ...(decoded.role === "student" ? { activeToken: null } : {})
+                        ...(decoded.role === "student" ? { activeToken: null } : {}),
                     });
                 }
             } catch (_) {

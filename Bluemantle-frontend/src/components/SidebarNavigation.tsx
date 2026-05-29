@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
+import { logoutAndRedirect } from "@/lib/api";
 import { 
   LayoutDashboard, Video, PlayCircle, Calendar, FileText, ClipboardCheck, 
   Target, BellRing, Users, BookOpen, DollarSign, Smartphone, 
@@ -152,19 +153,16 @@ export function SidebarNavigation({ role = "student" }: { role?: UserRole }) {
                     {item.name}
                   </Link>
                 ))}
-                <Link
-                  href="/"
+                <button
+                  type="button"
                   onClick={() => {
-                    // Clear cookies on logout
-                    document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    document.cookie = "user_role=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                    document.cookie = "user_name=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                    logoutAndRedirect();
                   }}
-                  className="flex items-center gap-3 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors mt-2 border-t border-outline_variant/20 pt-2"
+                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors mt-2 border-t border-outline_variant/20 pt-2 text-left"
                 >
                   <UserCircle className="w-4 h-4" />
                   Sign Out
-                </Link>
+                </button>
               </div>
              </div>
           </div>

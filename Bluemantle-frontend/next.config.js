@@ -14,6 +14,11 @@ const apiOrigin = (() => {
 const nextConfig = {
   reactStrictMode: false,
 
+  experimental: {
+    cpus: 1,
+    workerThreads: true,
+  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
