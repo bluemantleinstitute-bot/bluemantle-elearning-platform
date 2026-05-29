@@ -19,6 +19,10 @@ const nextConfig = {
     workerThreads: true,
   },
 
+  turbopack: {
+    root: path.resolve(__dirname),
+  },
+
   typescript: {
     ignoreBuildErrors: true,
   },
