@@ -5,18 +5,7 @@ const Note = require("../models/Note");
 const User = require("../models/user");
 const Batch = require("../models/Batch");
 const Progress = require("../models/Progress");
-
-const sameId = (left, right) => left && right && left.toString() === right.toString();
-
-const getStudentBatchForCourse = async (user, courseId) => {
-    const explicitBatchId = user.batchId?._id || user.batchId;
-    if (explicitBatchId) {
-        const batch = await Batch.findById(explicitBatchId).select("_id courseId students").lean();
-        if (batch && sameId(batch.courseId, courseId)) return batch;
-    }
-
-    return Batch.findOne({ courseId, students: user._id }).select("_id courseId students").lean();
-};
+const { getStudentBatchForCourse, getStudentCourseScope, sameId } = require("../utils/courseAccess");
 
 const sanitizeStudentNotes = async (notes, modules, user, courseId) => {
     const studentBatch = await getStudentBatchForCourse(user, courseId);
@@ -80,6 +69,11 @@ exports.getCourses = async (req, res) => {
         const User = require("../models/user");
         const includeInactive = req.query.includeInactive === "true";
         const filter = includeInactive ? {} : { isActive: true };
+        if ((req.user.role || "").toLowerCase() === "student") {
+            const user = req.userDb || await User.findById(req.user.id).select("_id batchId enrolledCourses").lean();
+            const scope = await getStudentCourseScope(user || {});
+            filter._id = { $in: scope.courseIds };
+        }
         const courses = await Course.find(filter).lean();
         
         const coursesWithStats = await Promise.all(courses.map(async (course) => {

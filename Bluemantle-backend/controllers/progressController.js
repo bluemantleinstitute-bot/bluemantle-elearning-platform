@@ -3,6 +3,15 @@ const Video = require("../models/video");
 const Course = require("../models/Course");
 const Module = require("../models/Module");
 const Batch = require("../models/Batch");
+const User = require("../models/user");
+const { getStudentCourseScope } = require("../utils/courseAccess");
+
+const assertStudentCourseAccess = async (req, courseId) => {
+    if ((req.user.role || "").toLowerCase() !== "student") return true;
+    const user = req.userDb || await User.findById(req.user.id).select("_id batchId enrolledCourses").lean();
+    const scope = await getStudentCourseScope(user || {});
+    return scope.courseIds.includes(courseId?.toString());
+};
 
 exports.watchVideo = async (req, res) => {
     try {
@@ -11,6 +20,10 @@ exports.watchVideo = async (req, res) => {
 
         if (!courseId || !moduleId || !videoId) {
             return res.status(400).json({ success: false, message: "Missing required fields" });
+        }
+
+        if (!(await assertStudentCourseAccess(req, courseId))) {
+            return res.status(403).json({ success: false, message: "Course is not assigned to your batch." });
         }
 
         // Validate that video, course, module hierarchy is intact
@@ -122,6 +135,10 @@ exports.getCourseProgress = async (req, res) => {
     try {
         const { courseId } = req.params;
         const userId = req.user.id;
+
+        if (!(await assertStudentCourseAccess(req, courseId))) {
+            return res.status(403).json({ success: false, message: "Course is not assigned to your batch." });
+        }
 
         const modules = await Module.find({ courseId }).sort({ order: 1 });
         const totalVideosInCourse = await Video.countDocuments({ courseId });

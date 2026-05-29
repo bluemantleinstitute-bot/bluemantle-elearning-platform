@@ -6,6 +6,7 @@ const Course = require("../models/Course");
 const Module = require("../models/Module");
 const Video = require("../models/video");
 const Progress = require("../models/Progress");
+const { getStudentCourseScope } = require("../utils/courseAccess");
 
 exports.getRegistry = async (req, res) => {
   try {
@@ -72,8 +73,19 @@ exports.getRegistry = async (req, res) => {
       status: appeal.status
     }));
 
+    let visibleCourseIds = null;
+    if ((req.user.role || "").toLowerCase() === "student") {
+      const user = req.userDb || await User.findById(req.user.id).select("_id batchId enrolledCourses").lean();
+      const scope = await getStudentCourseScope(user || {});
+      visibleCourseIds = new Set(scope.courseIds);
+    }
+
+    const visibleCourses = visibleCourseIds
+      ? dbCourses.filter((course) => visibleCourseIds.has(course._id.toString()) && course.isActive !== false)
+      : dbCourses;
+
     // Format Course Catalog
-    const courseCatalog = dbCourses.map(course => {
+    const courseCatalog = visibleCourses.map(course => {
       const courseModules = dbModules.filter(m => m.courseId && m.courseId.toString() === course._id.toString());
       return {
         id: course._id.toString(),
@@ -99,7 +111,13 @@ exports.getRegistry = async (req, res) => {
 
     // Format User Progress
     const userProgress = {};
-    dbProgress.forEach(prog => {
+    dbProgress
+    .filter((prog) => {
+      if (!prog.courseId) return false;
+      if ((req.user.role || "").toLowerCase() === "student" && prog.userId?.toString() !== req.user.id) return false;
+      return !visibleCourseIds || visibleCourseIds.has(prog.courseId.toString());
+    })
+    .forEach(prog => {
       if (!prog.userId || !prog.courseId || !prog.moduleId) return;
       
       const studentId = prog.userId.toString();
@@ -213,6 +231,11 @@ exports.dispatchAction = async (req, res) => {
         
         const isCompleted = payload.isCompleted || false;
         const studentId = payload.studentId || req.user.id;
+        const user = req.userDb || await User.findById(studentId).select("_id batchId enrolledCourses").lean();
+        const scope = await getStudentCourseScope(user || {});
+        if (!scope.courseIds.includes(payload.courseId?.toString())) {
+          return res.status(403).json({ success: false, message: "Course is not assigned to your batch" });
+        }
 
         const updateData = { 
             lastAccessedVideo: payload.chapterId, 

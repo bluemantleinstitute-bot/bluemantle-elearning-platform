@@ -4,12 +4,12 @@ const User = require("../models/user");
 const Batch = require("../models/Batch");
 const Module = require("../models/Module");
 const Progress = require("../models/Progress");
+const { getBatchCourseIds, getStudentBatchForCourse, getStudentCourseScope, sameId } = require("../utils/courseAccess");
 
 const RESOURCE_TYPES = ["PDF", "Note", "Assignment", "Resource"];
 const VISIBILITY_TYPES = ["enrolled", "batch", "hidden"];
 const UNLOCK_MODES = ["auto", "manual"];
 
-const sameId = (left, right) => left && right && left.toString() === right.toString();
 const isPrivilegedRole = (role) => ["admin", "owner"].includes((role || "").toLowerCase());
 const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
 const normalizeResourceType = (value) => {
@@ -30,10 +30,10 @@ const validateCourseModule = async (courseId, moduleId) => {
 };
 
 const getTeacherScope = async (teacherId) => {
-    const batches = await Batch.find({ teacherId }).select("_id courseId students").lean();
+    const batches = await Batch.find({ teacherId }).select("_id courseId assignedCourses students").lean();
     return {
         batchIds: batches.map((batch) => batch._id.toString()),
-        courseIds: [...new Set(batches.map((batch) => batch.courseId?.toString()).filter(Boolean))]
+        courseIds: [...new Set(batches.flatMap(getBatchCourseIds))]
     };
 };
 
@@ -49,31 +49,8 @@ const assertManageAccess = async (user, resource = null, courseId = null, batchI
     return !!resourceCourseId && scope.courseIds.includes(resourceCourseId);
 };
 
-const getStudentBatchForCourse = async (user, courseId) => {
-    const explicitBatchId = user.batchId?._id || user.batchId;
-    if (explicitBatchId) {
-        const batch = await Batch.findById(explicitBatchId).select("_id courseId students").lean();
-        if (batch && sameId(batch.courseId, courseId)) return batch;
-    }
-
-    return Batch.findOne({ courseId, students: user._id }).select("_id courseId students").lean();
-};
-
 const getStudentResourceScope = async (user) => {
-    const enrolledCourseIds = (user.enrolledCourses || []).map((courseId) => courseId.toString());
-    const studentObjectId = user._id;
-    const batchQuery = user.batchId
-        ? { $or: [{ students: studentObjectId }, { _id: user.batchId }] }
-        : { students: studentObjectId };
-
-    const batches = await Batch.find(batchQuery).select("_id courseId").lean();
-    const batchIds = batches.map((batch) => batch._id);
-    const batchCourseIds = batches.map((batch) => batch.courseId?.toString()).filter(Boolean);
-
-    return {
-        batchIds,
-        courseIds: [...new Set([...enrolledCourseIds, ...batchCourseIds])]
-    };
+    return getStudentCourseScope(user);
 };
 
 const getResourceAccess = async (resource, user) => {
@@ -86,8 +63,7 @@ const getResourceAccess = async (resource, user) => {
     }
 
     const studentBatch = await getStudentBatchForCourse(user, resource.courseId?._id || resource.courseId);
-    const enrolled = (user.enrolledCourses || []).some((courseId) => sameId(courseId, resource.courseId?._id || resource.courseId));
-    if (!enrolled && !studentBatch) {
+    if (!studentBatch) {
         return { allowed: false, reason: "Course not assigned to this student" };
     }
 
@@ -185,8 +161,8 @@ exports.createNote = async (req, res) => {
             if (!isValidId(batchId)) {
                 return res.status(400).json({ success: false, message: "Invalid batch id" });
             }
-            batch = await Batch.findById(batchId).select("_id courseId").lean();
-            if (!batch || !sameId(batch.courseId, courseId)) {
+            batch = await Batch.findById(batchId).select("_id courseId assignedCourses").lean();
+            if (!batch || !getBatchCourseIds(batch).some((assignedCourseId) => sameId(assignedCourseId, courseId))) {
                 return res.status(400).json({ success: false, message: "Batch does not belong to selected course" });
             }
         }
@@ -394,8 +370,8 @@ exports.updateNote = async (req, res) => {
 
         let nextBatchId = batchId === undefined ? note.batchId : batchId || null;
         if (nextBatchId) {
-            const batch = await Batch.findById(nextBatchId).select("_id courseId").lean();
-            if (!batch || !sameId(batch.courseId, nextCourseId)) {
+            const batch = await Batch.findById(nextBatchId).select("_id courseId assignedCourses").lean();
+            if (!batch || !getBatchCourseIds(batch).some((assignedCourseId) => sameId(assignedCourseId, nextCourseId))) {
                 return res.status(400).json({ success: false, message: "Batch does not belong to selected course" });
             }
         }

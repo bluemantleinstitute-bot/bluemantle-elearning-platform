@@ -9,6 +9,7 @@ const Announcement = require("../models/Announcement");
 const MarketNews = require("../models/MarketNews");
 const Video = require("../models/video");
 const Course = require("../models/Course");
+const { getStudentCourseScope } = require("../utils/courseAccess");
 
 exports.getStudentDashboard = async (req, res) => {
   try {
@@ -22,10 +23,6 @@ exports.getStudentDashboard = async (req, res) => {
     const [user, progressRecords, allBatches, notifications, attendanceStats, announcements, marketNews] = await Promise.all([
       User.findById(studentId)
         .select("name enrolledCourses level totalXP deviceId deviceStatus lastActive createdAt batchId")
-        .populate({
-          path: "enrolledCourses",
-          select: "title description price isPaid"
-        })
         .lean(),
 
       Progress.find({ userId: studentId })
@@ -33,7 +30,7 @@ exports.getStudentDashboard = async (req, res) => {
         .lean(),
 
       Batch.find({ students: studentId })
-        .select("_id name teacherId")
+        .select("_id name teacherId courseId assignedCourses")
         .populate("teacherId", "name")
         .lean(),
 
@@ -64,7 +61,7 @@ exports.getStudentDashboard = async (req, res) => {
     const assignedBatches = [...allBatches];
     if (user?.batchId && !assignedBatches.some(b => b._id.toString() === user.batchId.toString())) {
       const profileBatch = await Batch.findById(user.batchId)
-        .select("_id name teacherId")
+        .select("_id name teacherId courseId assignedCourses")
         .populate("teacherId", "name")
         .lean();
       if (profileBatch) assignedBatches.push(profileBatch);
@@ -72,6 +69,13 @@ exports.getStudentDashboard = async (req, res) => {
 
     const batch = assignedBatches[0]; // For legacy single-batch references
     const batchIds = assignedBatches.map(b => b._id);
+    const courseScope = await getStudentCourseScope(user || {});
+    const assignedCourseIds = courseScope.courseIds;
+    const validEnrolledCourses = assignedCourseIds.length > 0
+      ? await Course.find({ _id: { $in: assignedCourseIds }, isActive: true })
+        .select("title description price isPaid")
+        .lean()
+      : [];
 
     // Filter announcements by targetBatch if necessary
     const filteredAnnouncements = announcements.filter(a => !a.targetBatch || batchIds.some(bid => bid.toString() === a.targetBatch.toString()));
@@ -91,8 +95,7 @@ exports.getStudentDashboard = async (req, res) => {
     .populate("teacherId", "name")
     .lean();
 
-    // 2.5 Fetch Recent Recordings from enrolled courses (added within last 48 hours)
-    const validEnrolledCourses = (user?.enrolledCourses || []).filter(c => c != null);
+    // 2.5 Fetch Recent Recordings from courses assigned to the student's batch.
     const enrolledCourseIds = validEnrolledCourses.map(c => c._id);
     const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
     
@@ -118,7 +121,9 @@ exports.getStudentDashboard = async (req, res) => {
     if (progressRecords && progressRecords.length > 0) {
       const courseProgressTracker = {};
 
-      progressRecords.forEach((p) => {
+      progressRecords
+      .filter((p) => assignedCourseIds.includes(p.courseId.toString()))
+      .forEach((p) => {
         const cid = p.courseId.toString();
         if (!courseProgressTracker[cid]) {
           courseProgressTracker[cid] = { totalPercentage: 0, count: 0 };
@@ -145,9 +150,6 @@ exports.getStudentDashboard = async (req, res) => {
     }
 
     // 5. Build Final Aggregated Response safely avoiding nulls
-    console.log("Emily debug: enrolledCourses =", user?.enrolledCourses);
-    console.log("Emily debug: recentVideos =", recentVideos);
-
     return res.json({
       success: true,
       data: {
@@ -205,8 +207,9 @@ exports.getTeacherDashboard = async (req, res) => {
     const [user, batches, todayClasses, upcomingClasses, teacherClasses] = await Promise.all([
       User.findById(teacherId).select("name role").lean(),
       Batch.find({ teacherId })
-        .select("name courseId students maxStudents")
+        .select("name courseId assignedCourses students maxStudents")
         .populate("courseId", "title")
+        .populate("assignedCourses", "title")
         .lean(),
         
       LiveClass.find({
@@ -277,6 +280,15 @@ exports.getTeacherDashboard = async (req, res) => {
           title: b.courseId.title
         });
       }
+      (b.assignedCourses || []).forEach(course => {
+        if (course && !courseIds.has(course._id.toString())) {
+          courseIds.add(course._id.toString());
+          courses.push({
+            id: course._id,
+            title: course.title
+          });
+        }
+      });
     });
 
     // Return structured response

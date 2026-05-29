@@ -5,6 +5,7 @@ const { createModule, getCourseModules, updateModule, deleteModule } = require("
 
 const authMiddleware = require("../middleware/authMiddleware");
 const roleMiddleware = require("../middleware/roleMiddleware");
+const courseAccessMiddleware = require("../middleware/courseAccessMiddleware");
 
 // Admin and Teacher manage modules
 router.post("/", authMiddleware, roleMiddleware("admin", "owner", "teacher"), createModule);
@@ -12,6 +13,6 @@ router.put("/:id", authMiddleware, roleMiddleware("admin", "owner", "teacher"), 
 router.delete("/:id", authMiddleware, roleMiddleware("admin", "owner", "teacher"), deleteModule);
 
 // Get modules for a specific course
-router.get("/:courseId", authMiddleware, getCourseModules);
+router.get("/:courseId", authMiddleware, courseAccessMiddleware, getCourseModules);
 
 module.exports = router;

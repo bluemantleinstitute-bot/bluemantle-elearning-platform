@@ -2,12 +2,33 @@ const Batch = require("../models/Batch");
 const Course = require("../models/Course");
 const User = require("../models/user");
 
+const normalizeCourseIds = (courseId, assignedCourses = []) => {
+    const ids = Array.isArray(assignedCourses) ? [...assignedCourses] : [];
+    if (courseId) ids.unshift(courseId);
+    return [...new Set(ids.filter(Boolean).map((id) => id.toString()))];
+};
+
 exports.createBatch = async (req, res) => {
     try {
-        const { name, courseId, maxStudents, startDate, endDate } = req.body;
-        if (!name || !courseId) return res.status(400).json({ success: false, message: "Missing required fields" });
+        const { name, courseId, assignedCourses, maxStudents, startDate, endDate } = req.body;
+        const normalizedCourses = normalizeCourseIds(courseId, assignedCourses);
+        if (!name || normalizedCourses.length === 0) {
+            return res.status(400).json({ success: false, message: "Batch name and at least one course are required" });
+        }
 
-        const batch = await Batch.create({ name, courseId, maxStudents: maxStudents || 100, startDate, endDate });
+        const existingCourses = await Course.find({ _id: { $in: normalizedCourses }, isActive: true }).select("_id").lean();
+        if (existingCourses.length !== normalizedCourses.length) {
+            return res.status(400).json({ success: false, message: "One or more selected courses are invalid or inactive" });
+        }
+
+        const batch = await Batch.create({
+            name,
+            courseId: normalizedCourses[0],
+            assignedCourses: normalizedCourses,
+            maxStudents: maxStudents || 100,
+            startDate,
+            endDate
+        });
         res.status(201).json({ success: true, message: "Batch created successfully", data: batch });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -16,7 +37,10 @@ exports.createBatch = async (req, res) => {
 
 exports.listBatches = async (req, res) => {
     try {
-        const batches = await Batch.find().populate("courseId", "title").populate("teacherId", "name email signInId");
+        const batches = await Batch.find()
+            .populate("courseId", "title")
+            .populate("assignedCourses", "title")
+            .populate("teacherId", "name email signInId");
         res.json({ success: true, message: "Batches retrieved successfully", data: batches });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -25,11 +49,25 @@ exports.listBatches = async (req, res) => {
 
 exports.updateBatch = async (req, res) => {
     try {
-        const { name, maxStudents, startDate, endDate } = req.body;
+        const { name, courseId, assignedCourses, maxStudents, startDate, endDate } = req.body;
         const batch = await Batch.findById(req.params.id);
         if (!batch) return res.status(404).json({ success: false, message: "Batch not found" });
 
         if (name) batch.name = name;
+        if (courseId !== undefined || assignedCourses !== undefined) {
+            const normalizedCourses = normalizeCourseIds(courseId || batch.courseId, assignedCourses);
+            if (normalizedCourses.length === 0) {
+                return res.status(400).json({ success: false, message: "At least one course must be assigned to the batch" });
+            }
+
+            const existingCourses = await Course.find({ _id: { $in: normalizedCourses }, isActive: true }).select("_id").lean();
+            if (existingCourses.length !== normalizedCourses.length) {
+                return res.status(400).json({ success: false, message: "One or more selected courses are invalid or inactive" });
+            }
+
+            batch.courseId = normalizedCourses[0];
+            batch.assignedCourses = normalizedCourses;
+        }
         if (maxStudents) batch.maxStudents = maxStudents;
         if (startDate) batch.startDate = startDate;
         if (endDate) batch.endDate = endDate;
@@ -45,6 +83,7 @@ exports.getBatchDetails = async (req, res) => {
     try {
         const batch = await Batch.findById(req.params.id)
             .populate("courseId", "title")
+            .populate("assignedCourses", "title")
             .populate("teacherId", "name email signInId")
             .populate("students", "name email signInId");
         
@@ -124,8 +163,15 @@ exports.addStudents = async (req, res) => {
             return res.status(400).json({ success: false, message: "Adding these students exceeds the batch limit." });
         }
 
-        // Check against duplicate courses
-        const otherBatchesForCourse = await Batch.find({ courseId: batch.courseId, _id: { $ne: batch._id } });
+        // Check against duplicate course allocation across batches.
+        const batchCourseIds = normalizeCourseIds(batch.courseId, batch.assignedCourses);
+        const otherBatchesForCourse = await Batch.find({
+            _id: { $ne: batch._id },
+            $or: [
+                { courseId: { $in: batchCourseIds } },
+                { assignedCourses: { $in: batchCourseIds } }
+            ]
+        });
         const studentsInOtherBatches = new Set();
         otherBatchesForCourse.forEach(b => {
              b.students.forEach(s => studentsInOtherBatches.add(s.toString()));
