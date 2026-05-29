@@ -49,6 +49,24 @@ const isClientDeviceId = (deviceId) => {
     return typeof deviceId === "string" && deviceId.startsWith(CLIENT_DEVICE_PREFIX);
 };
 
+const isLegacyBrowserDeviceId = (deviceId) => {
+    return typeof deviceId === "string" && deviceId.startsWith("bmit-device-v1:");
+};
+
+const isStableBrowserDeviceId = (deviceId) => {
+    return typeof deviceId === "string" && deviceId.startsWith("bmit-device-v2:");
+};
+
+const canMigrateStudentDevice = (storedDeviceId, incomingDeviceId) => {
+    if (!isStableBrowserDeviceId(incomingDeviceId)) return false;
+
+    // Before the stable browser id existed, production used proxy/IP hashes.
+    if (!isClientDeviceId(storedDeviceId)) return true;
+
+    // A short-lived frontend build used random v1 browser ids. Move those to v2.
+    return isLegacyBrowserDeviceId(storedDeviceId);
+};
+
 const makeFallbackDeviceId = (req) => {
     return crypto
         .createHash("sha256")
@@ -113,8 +131,8 @@ exports.login = async (req, res) => {
         if (user.role === "student") {
             if (!user.deviceId) {
                 user.deviceId = incomingDeviceId;
-            } else if (isClientDeviceId(incomingDeviceId) && !isClientDeviceId(user.deviceId)) {
-                // Migrate old proxy/IP based locks to the stable browser device id.
+            } else if (canMigrateStudentDevice(user.deviceId, incomingDeviceId)) {
+                // Migrate old proxy/IP or temporary v1 browser locks to the stable v2 browser id.
                 user.deviceId = incomingDeviceId;
             } else if (user.deviceId !== incomingDeviceId) {
                 return res.status(403).json({
