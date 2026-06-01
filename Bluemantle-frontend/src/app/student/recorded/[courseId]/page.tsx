@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState } from "react";
 import { KnowledgeCard, CardBody } from "@/components/KnowledgeCard";
 import { 
   PlayCircle, CheckCircle2, ChevronDown, ChevronUp, 
   ArrowLeft, Lock, Play, Menu, X, Clock 
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { db } from "@/lib/db";
 import dynamic from 'next/dynamic';
@@ -16,8 +17,8 @@ const PremiumVideoPlayer = dynamic(
   { ssr: false, loading: () => <div className="aspect-video bg-black rounded-2xl animate-pulse" /> }
 );
 
-export default function CoursePlayerPage({ params }: { params: Promise<{ courseId: string }> }) {
-  const { courseId } = use(params);
+export default function CoursePlayerPage() {
+  const { courseId } = useParams<{ courseId: string }>();
   const [data, setData] = useState<any>(null);
   const [activeChapter, setActiveChapter] = useState<any>(null);
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
