@@ -1,5 +1,5 @@
 const User = require("../models/user");
-const { comparePassword } = require("../utils/hashPassword");
+const { comparePassword, hashPassword } = require("../utils/hashPassword");
 const generateToken = require("../utils/generateToken");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
@@ -29,6 +29,31 @@ const clearAuthCookies = (res) => {
     res.clearCookie("token", { httpOnly: true, secure: true, sameSite: "none", path: "/" });
     res.clearCookie("user_role", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
     res.clearCookie("user_name", { httpOnly: false, secure: true, sameSite: "none", path: "/" });
+};
+
+const isBcryptHash = (value) => typeof value === "string" && /^\$2[aby]\$/.test(value);
+
+const verifyAndRepairPassword = async (user, enteredPassword) => {
+    const passwordText = String(enteredPassword || "");
+    let isMatch = false;
+
+    if (user.password) {
+        isMatch = isBcryptHash(user.password)
+            ? await comparePassword(passwordText, user.password)
+            : user.password === passwordText;
+    }
+
+    const matchesStoredPlainPassword = !isMatch && user.plainPassword === passwordText;
+    if (!isMatch && !matchesStoredPlainPassword) {
+        return false;
+    }
+
+    if (!isBcryptHash(user.password) || matchesStoredPlainPassword) {
+        user.password = await hashPassword(passwordText);
+        user.plainPassword = passwordText;
+    }
+
+    return true;
 };
 
 const isFacultyAccount = (role) => ["teacher", "admin", "owner"].includes(role);
@@ -70,7 +95,7 @@ exports.login = async (req, res) => {
         const { userId, password, deviceId } = req.body; 
         
         // Frontend uses 'userId' but DB uses 'signInId'
-        const signInId = userId || req.body.signInId;
+        const signInId = String(userId || req.body.signInId || "").trim();
 
         // Basic validation
         if (!signInId || !password) {
@@ -84,7 +109,7 @@ exports.login = async (req, res) => {
         }
 
         // Verify password
-        const isMatch = await comparePassword(password, user.password);
+        const isMatch = await verifyAndRepairPassword(user, password);
         if (!isMatch) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
