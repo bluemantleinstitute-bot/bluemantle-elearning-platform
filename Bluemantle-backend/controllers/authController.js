@@ -114,21 +114,9 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // Device-Based Access Control logic (Applicable only to students)
+        // Keep a soft session fingerprint for audit/session metadata only.
+        // Students are no longer blocked by stored deviceId.
         const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
-
-        if (user.role === "student") {
-            if (!user.deviceId) {
-                // First time login or after admin unlink, bind device
-                user.deviceId = incomingDeviceId;
-            } else if (user.deviceId !== incomingDeviceId) {
-                // Strict device locking
-                return res.status(403).json({ 
-                    success: false, 
-                    message: "Access Denied: Your account is locked to a specific device. Please contact administration to request a device unlink." 
-                });
-            }
-        }
         
         // Session Enforcement: students stay single-device/single-session, faculty/admin keep up to 3 sessions.
         const activeToken = crypto.randomBytes(32).toString('hex');
@@ -171,10 +159,7 @@ exports.verifyOtp = async (req, res) => {
 
         const incomingDeviceId = deviceId || crypto.createHash('md5').update(req.ip + req.headers['user-agent']).digest('hex');
         
-        // Update device and clear OTP
-        if (user.role === "student") {
-            user.deviceId = incomingDeviceId;
-        }
+        // Clear OTP. Device IDs are no longer used to lock student access.
         user.otp = null;
         user.otpExpires = null;
         
