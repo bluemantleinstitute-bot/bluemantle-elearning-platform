@@ -91,6 +91,8 @@ const signMeetingSdkToken = ({ meetingNumber, role }) => {
 
   return {
     signature: token,
+    // Client ID is public (it is embedded in the JWT payload). Web SDK 3.x join() requires it as sdkKey.
+    appKey,
     appKeyMask: maskCredential(appKey),
     iat,
     exp,
@@ -162,6 +164,7 @@ exports.generateSignature = async (req, res) => {
     res.json({
       success: true,
       signature: signed.signature,
+      appKey: signed.appKey,
       appKeyMask: signed.appKeyMask,
       meetingNumber: actualMeeting,
       password: liveClass.zoomPassword || "",
