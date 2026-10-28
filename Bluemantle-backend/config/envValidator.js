@@ -21,10 +21,10 @@ const validateEnv = () => {
         process.exit(1);
     }
 
-    const hasMeetingSdkKey = process.env.SDK_ID || process.env.ZOOM_MEETING_SDK_KEY || process.env.ZOOM_SDK_KEY;
-    const hasMeetingSdkSecret = process.env.SDK_SECRET || process.env.ZOOM_MEETING_SDK_SECRET || process.env.ZOOM_SDK_SECRET;
+    const hasMeetingSdkKey = (process.env.SDK_ID || process.env.ZOOM_MEETING_SDK_KEY || process.env.ZOOM_SDK_KEY || "").trim();
+    const hasMeetingSdkSecret = (process.env.SDK_SECRET || process.env.ZOOM_MEETING_SDK_SECRET || process.env.ZOOM_SDK_SECRET || "").trim();
     if (!hasMeetingSdkKey || !hasMeetingSdkSecret) {
-        console.error("\x1b[31m[ERROR]\x1b[0m Missing Zoom Meeting SDK credentials. Add SDK_ID and SDK_SECRET, or ZOOM_MEETING_SDK_KEY and ZOOM_MEETING_SDK_SECRET.");
+        console.error("\x1b[31m[ERROR]\x1b[0m Missing Zoom Meeting SDK credentials. Set SDK_ID and SDK_SECRET to the Client ID and Client Secret from your Meeting SDK app's App Credentials page (SDK Credentials section). These are separate from the Server-to-Server OAuth credentials (ZOOM_ACCOUNT_ID / ZOOM_CLIENT_ID / ZOOM_CLIENT_SECRET).");
         process.exit(1);
     }
 

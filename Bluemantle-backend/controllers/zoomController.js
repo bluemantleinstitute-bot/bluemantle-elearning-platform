@@ -7,11 +7,20 @@ const zoomHelper = require("../utils/zoomHelper");
 const privilegedRoles = new Set(["admin", "owner"]);
 const teacherRoles = new Set(["teacher", "admin", "owner"]);
 
-const sdkKey = () => process.env.SDK_ID || process.env.ZOOM_MEETING_SDK_KEY || process.env.ZOOM_SDK_KEY;
-const sdkSecret = () => process.env.SDK_SECRET || process.env.ZOOM_MEETING_SDK_SECRET || process.env.ZOOM_SDK_SECRET;
+const sdkKey = () =>
+  (process.env.SDK_ID || process.env.ZOOM_MEETING_SDK_KEY || process.env.ZOOM_SDK_KEY || "").trim();
+const sdkSecret = () =>
+  (process.env.SDK_SECRET || process.env.ZOOM_MEETING_SDK_SECRET || process.env.ZOOM_SDK_SECRET || "").trim();
 
 const sameId = (left, right) => left?.toString() === right?.toString();
 const normalizeMeetingNumber = (value) => String(value || "").replace(/\D/g, "");
+
+// Safe diagnostic mask: first 4 + last 4 chars only. Never log secrets, ZAK tokens, or full JWTs.
+const maskCredential = (value) => {
+  if (!value) return "<empty>";
+  if (value.length < 12) return "<set>";
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
 
 const batchContainsStudent = (batch, userId) => {
   return (batch.students || []).some((studentId) => sameId(studentId, userId));
@@ -50,12 +59,16 @@ const assertStudentAccess = async (liveClass, userId, userDb) => {
   return { ok: true };
 };
 
+// Meeting SDK JWT per Zoom's current authorization spec (SDK Key migration, enforced June 27 2026):
+// payload = appKey, mn, role, iat, exp, tokenExp. The legacy sdkKey claim is removed.
 const signMeetingSdkToken = ({ meetingNumber, role }) => {
-  const key = sdkKey();
-  const secret = sdkSecret();
+  const appKey = sdkKey();
+  const clientSecret = sdkSecret();
 
-  if (!key || !secret) {
-    const error = new Error("Zoom Meeting SDK credentials are missing.");
+  if (!appKey || !clientSecret) {
+    const error = new Error(
+      "Zoom Meeting SDK credentials are missing. Set SDK_ID (Client ID) and SDK_SECRET (Client Secret) from the Meeting SDK app's App Credentials page."
+    );
     error.status = 500;
     throw error;
   }
@@ -63,23 +76,28 @@ const signMeetingSdkToken = ({ meetingNumber, role }) => {
   const iat = Math.round(Date.now() / 1000) - 30;
   const exp = iat + 60 * 60 * 2;
   const payload = {
-    sdkKey: key,
-    appKey: key,
+    appKey,
     mn: meetingNumber,
     role,
     iat,
     exp,
-    tokenExp: exp
+    tokenExp: exp,
   };
 
+  const token = jwt.sign(payload, clientSecret, {
+    algorithm: "HS256",
+    header: { alg: "HS256", typ: "JWT" },
+  });
+
   return {
-    signature: jwt.sign(payload, secret, {
-      algorithm: "HS256",
-      header: { alg: "HS256", typ: "JWT" }
-    }),
-    sdkKey: key
+    signature: token,
+    appKeyMask: maskCredential(appKey),
+    iat,
+    exp,
   };
 };
+
+exports.signMeetingSdkToken = signMeetingSdkToken;
 
 exports.generateSignature = async (req, res) => {
   try {
@@ -136,10 +154,15 @@ exports.generateSignature = async (req, res) => {
     const hostIdentifier = liveClass.zoomHostEmail || liveClass.teacherId?.email || liveClass.zoomHostId;
     const zak = requestedRole === 1 ? await zoomHelper.getHostZak(hostIdentifier) : null;
 
+    // Safe diagnostics: claim metadata and credential fingerprint only. Never secrets, ZAK, or the JWT.
+    console.log(
+      `[zoom-signature] appKey=${signed.appKeyMask} mn=${actualMeeting} role=${requestedRole} iat=${signed.iat} exp=${signed.exp} zakIssued=${Boolean(zak)} userId=${req.user.id}`
+    );
+
     res.json({
       success: true,
       signature: signed.signature,
-      sdkKey: signed.sdkKey,
+      appKeyMask: signed.appKeyMask,
       meetingNumber: actualMeeting,
       password: liveClass.zoomPassword || "",
       role: requestedRole,
